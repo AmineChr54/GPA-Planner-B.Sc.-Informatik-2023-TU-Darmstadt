@@ -1,11 +1,15 @@
 # ---- personal data — never commit ----
 my-grades.js
+legacy/my-grades.js
 private/
-*.Leistungsspiegel.pdf
-Leistungsspiegel*.pdf
+*Leistungsspiegel*.pdf
 gpa-plan.json
+notenplaner-*.json
+studienplan-*.png
 
-# ---- Windows / editor noise ----
+# ---- tooling / OS noise ----
+node_modules/
+__pycache__/
 desktop.ini
 Thumbs.db
 .DS_Store

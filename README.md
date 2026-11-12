@@ -1,32 +1,28 @@
-# GPA Planner — B.Sc. Informatik (PO 2023), TU Darmstadt
+# Notenplaner — B.Sc. Informatik (PO 2023), TU Darmstadt
 
-A single-file, offline grade planner that computes your **Gesamtnote the way the Prüfungsordnung
-defines it** — not the way TUCaN's live GPA field estimates it — and tells you what you still need to
-score to hit a target.
+A grade and study planner for the B.Sc. Informatik at TU Darmstadt. It computes your
+**Gesamtnote the way the Prüfungsordnung defines it**, lays out your whole degree as an interactive
+version of the official *Studienübersicht*, and tells you what you still need for your goal.
 
-## Run it
+**Open it:** https://yacine-dh.github.io/GPA-Planner-B.Sc.-Informatik-2023-TU-Darmstadt/
 
-No build, no server, no dependencies, no network calls. Pick one:
+No account, no server, no tracking. Everything stays in your browser.
 
-**Download** — green *Code* button → *Download ZIP* → unzip → double-click `gpa.html`. No git needed.
+![Studienplan](docs/screenshots/studienplan.png)
 
-**Clone** — if you want `git pull` to get later fixes:
+## What it does
 
-```bash
-git clone https://github.com/Yacine-DH/GPA-Planner-B.Sc.-Informatik-2023-TU-Darmstadt.git
-```
+| | |
+|---|---|
+| **Studienplan** | The official overview, made interactive. Modules are colored by area (Pflicht, Wahlpflicht, Wahlbereiche, Seminare & Praktika, Studium Generale, Bachelorarbeit) and shown solid when passed, dashed when planned. Drag modules between semesters, use **+** for a 7th or 8th semester, and mark a semester as **Urlaubssemester** (blocked, doesn't count as a Fachsemester) or **Auslandssemester** (your own modules, recognized into an area). **Choice blocks** hold "Seminar A *or* B" until you decide. The elective bands hold not-yet-scheduled modules, and there is a 270-module catalog from the Modulhandbuch. Export as PNG or PDF. |
+| **Grade over time** | Running average per semester, passed vs. planned, against your goal. |
+| **TUCaN import** | Drop the Leistungsspiegel PDF from TUCaN's print button. Modules, CP, grades, open modules, Schwerpunkte and seminar/lab types are recognized. Parsed locally with pdf.js. |
+| **Ziel & Strategie** | The average you need, plus an **optimizer** that finds the least-effort grade plan based on how hard each module is for you. It shows what one extra elective would do (§ 25 (5) caps) and which modules to **deselect instead of retake**. **Scenarios** (copy / optimistic / pessimistic) compare plans side by side. |
+| **Prüfungen** | Exam dates with countdown, failed attempts (3 per exam), the once-per-degree *mündliche Ergänzungsprüfung* (§ 32), and the **Abwahl budget**: § 30 (5) once per area, § 30 (6) unlimited. |
+| **Rule checks** | Every area within its CP range, 180 CP total, and the B 1.2 rules (≥ 1 Seminar, ≥ 1 Praktikum, ≤ 1 Praktikum in der Lehre, ≤ 1 Studienarbeit). |
+| **Everything else** | German / English, light / dark, works on phones, works offline and installable (PWA), undo (Ctrl+Z). |
 
-Then open `gpa.html` in any browser. Fully offline; edits are saved in that browser's `localStorage`,
-so use *Export JSON backup* before clearing browser data.
-
-## Why this exists
-
-The *Gesamt-GPA* on your Leistungsspiegel is a forecast: TUCaN fills open modules and areas with
-estimates that *"besser oder schlechter als der tatsächliche Wert ausfallen"* können
-([FAQ](https://www.tu-darmstadt.de/studieren/studierende_tu/studienorganisation_und_tucan/hilfe_und_faq/artikel_details_de_en_32704.de.jsp)),
-and prints three decimals where § 28 (2) truncates to two. Mid-degree the two numbers can differ by
-several hundredths — which matters when you plan against a master's threshold. This app implements the
-regulation instead.
+<p><img src="docs/screenshots/uebersicht.png" width="49%" alt="Übersicht"> <img src="docs/screenshots/mobil.png" width="22%" alt="Mobil"></p>
 
 ## The formula
 
@@ -36,78 +32,58 @@ Gesamtnote = Σ (CP_i × Note_i) / Σ CP_i     →  keep 2 decimals, truncate, n
 
 | Rule | Source |
 |---|---|
-| Weight = CP earned; no module carries a bonus factor, including the 12 CP thesis | Studiengangsordnung *zu § 28 (2)* — and Anhang I leaves *Gewichtung f. Gesamtnote* empty for every module |
-| `bestanden / nicht bestanden` modules excluded | APB § 25 (1) |
-| In elective areas grades count **best first** up to the area's cap; the excess is dropped, partial CP included | APB § 25 (5) |
-| Truncate to 2 decimals, no rounding | APB § 28 (2) |
-| 1,0–1,59 sehr gut · 1,6–2,59 gut · 2,6–3,59 befriedigend · 3,6–4,09 ausreichend | APB § 28 (3) |
+| Weight = CP; no module has a bonus factor, the 12 CP thesis included | Studiengangsordnung *zu § 28 (2)*, Anhang I |
+| Pass/fail modules excluded | APB § 25 (1) |
+| In elective areas the best grades count up to the area's cap, partial CP included | APB § 25 (5) |
+| Truncate to 2 decimals | APB § 28 (2) |
 
-Caps, printed on every Leistungsspiegel as *"Die Ergebnisse von maximal X Credits gehen in die
-Notenberechnung ein"*, applied bottom-up:
+Caps per area (printed on every Leistungsspiegel) are applied bottom-up: Wahlpflicht 35 · Wahlbereiche 30 ·
+Fachprüfungen 40 · Studienbegleitende Leistungen 18 · Informatik 49 · Studium Generale 6 CP.
+TUCaN's *Gesamt-GPA* is a forecast with estimates, so mid-degree it differs from this value. The
+*Regeln & Hintergrund* page in the app explains why, along with retakes, deselection and leave semesters.
 
-| Area | Required | Counts |
-|---|---|---|
-| A — Pflichtbereich | 114 CP | all (113 graded) |
-| B 1.1.1 — Wahlpflichtbereich | 10–35 CP | max 35 |
-| B 1.1.2 — Informatik-Wahlbereiche | 5–30 CP | max 30 |
-| B 1.1 — Fachprüfungen | 30–40 CP | max 40 |
-| B 1.2 — Studienbegleitende Leistungen | 9–18 CP | max 18 |
-| B 1 — Informatik | 48–49 CP | max 49 |
-| B 2 — Studium Generale | 5–6 CP | max 6 |
-| C — Bachelorarbeit | 12 CP | all |
+## Your data
 
-Because caps take the **best** grades, deliberately over-shooting an elective area is a legal way to
-delete a bad elective grade.
+- Stored only in this browser's `localStorage`. Nothing is uploaded, the app makes no third-party requests, and the PDF import runs locally.
+- **⚙ → Backup exportieren / importieren** moves your plan between devices. Backups from the original single-file planner can be imported too.
+- **⚙ → Alle Daten löschen** wipes everything. The app reminds you to back up if you haven't in 30 days, and asks the browser for persistent storage so it isn't evicted silently.
+- Hosted on GitHub Pages, so GitHub processes visitors' IP addresses (see the in-app *Datenschutz* page).
 
-## Does a 5,0 hurt the GPA?
+## Run locally / host it
 
-**No.** The module grade comes from the attempt you pass (§ 25 (3)); an unpassed module has no grade at
-all and shows as *unvollständig*. A 5,0 costs attempts — two retries, then one *mündliche
-Ergänzungsprüfung* per degree (§ 30–32) — and time. Nothing else.
-
-**The opposite rule hurts.** § 30 (1): *"Bestandene Prüfungen können nicht wiederholt werden."*
-Voluntary retakes to improve a passed grade (§ 30 Abs. 1a) exist only for exams marked `x` in the
-Studien- und Prüfungsplan, and **the PO 2023 plan marks none** — every grade you have is permanent.
-
-Escape hatch: elective areas are *Typ § 30 Abs. 5* (one deselection) or *Abs. 6* (unlimited). An
-elective you have **not yet completed** can be abgewählt — retakes disappear, failed attempts are not
-counted, it never reaches the Zeugnis. Pflichtmodule cannot (§ 30 (3)).
-
-## Using it
-
-1. Set each module's status — `✓ passed` / `◻ planned` / `✕ not taking` — and its grade. On planned
-   modules the grade is your **goal**, not a prediction.
-2. Add or remove elective rows until the *Degree structure check* is green and totals 180 CP.
-3. Set your goal GPA. The app gives you the average you need across everything still open, and can fill
-   every open module with the grade that gets you there.
-4. The **leverage** column shows what each module moves the final grade by. Big-CP modules move it most.
-
-## Keeping your grades out of git
-
-`gpa.html` ships with a blank plan. To preload your transcript, copy `my-grades.example.js` to
-`my-grades.js` and fill it in — the app loads it if present. That file, `private/`, and any
-`Leistungsspiegel*.pdf` are in `.gitignore`, so personal data never enters a commit. Check
-`git status` before pushing.
+Double-click `index.html`; it works from disk. To host it, enable **GitHub Pages → Deploy from a branch →
+`main` / root**. There is no build step, and `.nojekyll` makes Pages serve the files as they are. Over http(s) a service
+worker caches the app for offline use. Bump `VERSION` in `sw.js` when you change the file list.
 
 ```
-gpa.html                the app — public data only
-my-grades.example.js    template for your own transcript
-my-grades.js            your transcript          (gitignored)
-private/                your Leistungsspiegel    (gitignored)
-docs/                   the official TU Darmstadt documents this is built from
+index.html, css/, js/      the app (plain scripts, no build)
+js/engine.js               § 28 calculation, solver, optimizer, structure checks
+js/tucan.js                Leistungsspiegel import (PDF + pasted text)
+js/store.js                state, scenarios, semesters, persistence, undo
+js/views/*.js              Übersicht, Studienplan, Ziel & Strategie, Prüfungen, settings
+js/catalog.js              elective catalog, generated by tools/extract_catalog.py
+vendor/                    pdf.js 3.11.174 (Apache-2.0), html-to-image 1.11.11 (MIT), loaded on demand
+css/fonts.css              Open Sans (OFL, see fonts/OFL.txt), embedded so it also works from file://
+docs/                      the official TU Darmstadt documents this is built from
+legacy/gpa.html            the original single-file planner, unchanged
 ```
+
+Rebuild the catalog after a new Modulhandbuch:
+`pip install pymupdf && python tools/extract_catalog.py docs/Modulhandbuch_BSc_Informatik_PO2023.pdf js/catalog.js`
 
 ## Sources
 
-- [APB, Satzungsbeilage 2023-VII](https://www.intern.tu-darmstadt.de/media/dezernat_ii/ordnungen/apb.pdf)
-- [Ordnung des Studiengangs B.Sc. Informatik 2023](https://www.informatik.tu-darmstadt.de/media/informatik/fb20_studium/formulare_und_dokumente/ordnungen/ordnungen_bsc/pruefungsordnung_2023/Studiengangsordnung_Bachelor_Informatik_2023.pdf)
-- [Studien- und Prüfungsplan (Anhang I)](https://www.informatik.tu-darmstadt.de/media/informatik/fb20_studium/formulare_und_dokumente/ordnungen/ordnungen_bsc/pruefungsordnung_2023/SPP_B.Sc._Informatik.pdf)
-- [Modulhandbuch PO 2023](https://www.informatik.tu-darmstadt.de/media/informatik/fb20_studium/formulare_und_dokumente/ordnungen/ordnungen_bsc/pruefungsordnung_2023/2022_09_30_MHB_BSC_INF.pdf)
-- [TUCaN FAQ — the GPA field is an estimate](https://www.tu-darmstadt.de/studieren/studierende_tu/studienorganisation_und_tucan/hilfe_und_faq/artikel_details_de_en_32704.de.jsp)
+[APB (Satzungsbeilage 2023-VII)](https://www.intern.tu-darmstadt.de/media/dezernat_ii/ordnungen/apb.pdf) ·
+[Studiengangsordnung B.Sc. Informatik 2023](https://www.informatik.tu-darmstadt.de/media/informatik/fb20_studium/formulare_und_dokumente/ordnungen/ordnungen_bsc/pruefungsordnung_2023/Studiengangsordnung_Bachelor_Informatik_2023.pdf) ·
+[Studien- und Prüfungsplan](https://www.informatik.tu-darmstadt.de/media/informatik/fb20_studium/formulare_und_dokumente/ordnungen/ordnungen_bsc/pruefungsordnung_2023/SPP_B.Sc._Informatik.pdf) ·
+[Modulhandbuch](https://www.informatik.tu-darmstadt.de/media/informatik/fb20_studium/formulare_und_dokumente/ordnungen/ordnungen_bsc/pruefungsordnung_2023/2022_09_30_MHB_BSC_INF.pdf) ·
+[TUCaN FAQ](https://www.tu-darmstadt.de/studieren/studierende_tu/studienorganisation_und_tucan/hilfe_und_faq/artikel_details_de_en_32704.de.jsp).
+Copies live in `docs/`; the linked originals are authoritative.
 
-Copies live in `docs/` for offline reference; the linked originals are authoritative.
+## Credits & disclaimer
 
-## Disclaimer
+Original planner and grade rules by **Yacine** (`legacy/gpa.html`). Study plan, import, optimizer, exams,
+redesign and hosting by **Amine Cheikhrouhou**.
 
 Unofficial, not affiliated with TU Darmstadt. The Prüfungsordnung is the only binding source. If a
 number here matters to a decision, check it with your Studienbüro.
