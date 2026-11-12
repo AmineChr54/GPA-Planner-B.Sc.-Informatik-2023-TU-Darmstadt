@@ -1,0 +1,16 @@
+{
+  "name": "Notenplaner · B.Sc. Informatik TU Darmstadt",
+  "short_name": "Notenplaner",
+  "description": "Gesamtnote nach § 28 APB, interaktiver Studienplan, Optimierer und Prüfungen – alles lokal im Browser.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "lang": "de",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
