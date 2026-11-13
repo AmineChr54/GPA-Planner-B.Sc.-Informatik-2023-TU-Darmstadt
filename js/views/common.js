@@ -85,6 +85,7 @@
           <h3>${t("f.strategy")}</h3>
           <div class="lbl">${t("opt.diff")}<div class="seg">${[1, 2, 3].map((d) => `<button type="button" class="${(m.diff || 2) === d ? "on" : ""}" data-act="diff" data-id="${m.id}" data-v="${d}">${t("diff." + d)}</button>`).join("")}</div></div>
           <label>${t("opt.floor")}<select data-id="${m.id}" data-f="floor">${gradeOptions(m.floor || 1.0)}</select></label>` : ""}
+        ${UI.statsSection(m)}
         ${m.sl ? `<p class="fine full"><b style="color:var(--bad)">*</b> ${t("legend.sl")}</p>` : ""}
       </div>
       <footer class="dlg-f">
@@ -93,6 +94,27 @@
         <span class="spacer"></span><button class="btn primary" data-act="close">${t("done")}</button></footer>`;
     UI.modal(html, "has-c a-" + m.a);
   };
+
+  /* ---------------- Notenspiegel (grade distribution from TUCaN screenshots) ---------------- */
+  UI.statsSection = (m) => {
+    const code = m.code || (m.choice && m.choice[0] && m.choice[0].code);
+    const terms = GradeStats.terms(code);
+    if (!terms.length) return "";
+    if (state.statsFor !== code) { state.statsFor = code; state.statsTerm = ""; }
+    const s = GradeStats.summary(code, state.statsTerm || null);
+    const max = Math.max(...s.counts);
+    const pct = (c) => Math.round((c / s.n) * 100);
+    const bars = s.counts.map((c, i) => `<div class="ns-bar ${i === 10 ? "fail" : ""}" style="height:${Math.max(2, (c / max) * 100)}%" title="${esc(t("ns.barTitle", { g: UI.fmtG(GradeStats.G[i]), c, p: pct(c) }))}" aria-label="${esc(t("ns.barTitle", { g: UI.fmtG(GradeStats.G[i]), c, p: pct(c) }))}"></div>`).join("");
+    const chips = terms.length > 1 ? `<div class="chips ns-terms"><button type="button" class="chip-btn ${!state.statsTerm ? "on" : ""}" data-act="statsTerm" data-v="">${t("ns.allTerms", { n: terms.length })}</button>${terms.map((x) => `<button type="button" class="chip-btn ${state.statsTerm === x ? "on" : ""}" data-act="statsTerm" data-v="${esc(x)}">${esc(x)}</button>`).join("")}</div>` : "";
+    const miss = [s.missing.sick ? t("ns.sick", { n: s.missing.sick }) : "", s.missing.absent ? t("ns.absent", { n: s.missing.absent }) : ""].filter(Boolean).join(" · ");
+    return `<div class="full ns"><h3>${t("ns.title")} <span class="fine">${terms.length === 1 ? esc(terms[0]) : ""}</span></h3>${chips}
+      <div class="ns-kpis"><span>${t("ns.avgPassed")} <b>${s.avgPassed != null ? fmt(s.avgPassed) : "–"}</b></span><span>${t("ns.fail")} <b class="${s.failRate >= 0.3 ? "bad-txt" : ""}">${pct(s.counts[10])} %</b></span><span>${t("ns.avgAll")} <b>${fmt(s.avgAll, 3)}</b></span><span>${t("ns.n", { n: s.n })}</span></div>
+      <div class="ns-bars" role="img" aria-label="${esc(t("ns.aria"))}">${bars}</div>
+      <div class="ns-x">${GradeStats.G.map((g) => `<span>${UI.fmtG(g)}</span>`).join("")}</div>
+      <details class="ns-table"><summary class="fine">${t("ns.asTable")}</summary><table class="tbl"><tr><th>${t("col.grade")}</th>${GradeStats.G.map((g) => `<th class="num">${UI.fmtG(g)}</th>`).join("")}</tr><tr><td>${t("ns.count")}</td>${s.counts.map((c) => `<td class="num">${c}</td>`).join("")}</tr></table></details>
+      <p class="fine">${miss ? miss + " · " : ""}${t("ns.source")}</p></div>`;
+  };
+  UI.act.statsTerm = (el) => { state.statsTerm = el.dataset.v; UI.renderModuleModal(); };
 
   /* ---------------- catalog picker (add, or add options to a choice block) ---------------- */
   UI.openCatalog = (area, mode = "add", id = null, sem = null) => {
@@ -120,7 +142,7 @@
     el.innerHTML = list.length ? list.map((c) => {
       const has = mode === "choice" ? inChoice.has(Tucan.baseCode(c.code)) : inPlan.has(Tucan.baseCode(c.code));
       return `<div class="cat-item ${has ? "has" : ""}"><div><div class="mname">${esc(c.name)}</div><div class="meta"><span class="mono">${esc(c.code)}</span>${c.g ? `<span class="chip">${esc(groupName(c.a, c.g))}</span>` : ""}<span>${c.lang === "en" ? "EN" : c.lang === "de" ? "DE" : "DE/EN"}</span></div></div>
-        ${(() => { const e = typeof ExamDates !== "undefined" ? ExamDates.byCode(c.code).find((x) => !x.second) : null; return e ? `<span class="chip ed-chip" title="${esc(t("ed.chipTitle", { term: ExamDates.get().term }))}">${icon("exams", "ic")}${UI.dateShort(e.date)}</span>` : ""; })()}<span class="num cat-cp">${c.cp} CP</span>${has ? pill("good", mode === "choice" ? t("cat.inChoice") : t("cat.inPlan")) : `<button class="btn sm" data-act="${mode === "choice" ? "catOption" : "catAdd"}" data-code="${esc(c.code)}">${mode === "choice" ? t("cat.asOption") : t("add")}</button>`}</div>`;
+        ${(() => { const e = typeof ExamDates !== "undefined" ? ExamDates.byCode(c.code).find((x) => !x.second) : null; return e ? `<span class="chip ed-chip" title="${esc(t("ed.chipTitle", { term: ExamDates.get().term }))}">${icon("exams", "ic")}${UI.dateShort(e.date)}</span>` : ""; })()}${(() => { const s = GradeStats.summary(c.code); return s ? `<span class="chip ns-chip" title="${esc(t("ns.chipTitle", { n: s.n, exams: s.exams }))}">Ø ${fmt(s.avgPassed)} · ${Math.round(s.failRate * 100)} % ✗</span>` : ""; })()}<span class="num cat-cp">${c.cp} CP</span>${has ? pill("good", mode === "choice" ? t("cat.inChoice") : t("cat.inPlan")) : `<button class="btn sm" data-act="${mode === "choice" ? "catOption" : "catAdd"}" data-code="${esc(c.code)}">${mode === "choice" ? t("cat.asOption") : t("add")}</button>`}</div>`;
     }).join("") : `<p class="empty" style="padding:16px 18px">${t("cat.none")}</p>`;
   };
 
