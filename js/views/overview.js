@@ -82,17 +82,17 @@
     return `
       <div class="page-head"><div><h1>${t("overview.title")}</h1><p class="lede">${t("overview.lede")}</p></div></div>
       ${S.migrated ? `<div class="banner info">${t("migrated")}</div>` : ""}
-      <div class="ov-top">
+      <div class="ov-top ${S.goalOn ? "" : "solo"}">
         <section class="card hero">
           <div class="eyebrow">${t("k.proj")} <span class="help" title="${esc(t("hero.help"))}">?</span></div>
           <div class="hero-row">
             <div><div class="hero-num">${big(c.proj.official)}</div><div class="hero-sub">${stufe(c.proj.official)} · ${t("hero.cp", { done: fmt(c.doneCp, 0), planned: fmt(c.plannedCp, 0) })}</div></div>
             <div class="mini-stats"><div><span class="k">${t("k.now")}</span><span class="v">${big(c.now.official)}</span></div><div><span class="k">${t("k.best")}</span><span class="v">${big(c.best.official)}</span></div></div>
           </div>
-          ${scaleBar([{ kind: "now", label: t("k.now"), v: c.now.official }, { kind: "proj", label: t("k.plan"), v: c.proj.official }, { kind: "target", label: t("k.target"), v: c.target }, { kind: "best", label: t("k.best"), v: c.best.official }])}
+          ${scaleBar([{ kind: "now", label: t("k.now"), v: c.now.official }, { kind: "proj", label: t("k.plan"), v: c.proj.official }, ...(S.goalOn ? [{ kind: "target", label: t("k.target"), v: c.target }] : []), { kind: "best", label: t("k.best"), v: c.best.official }])}
           ${T ? `<div class="hero-note">${t("tucan.line", { tucan: fmt(T.gpa, 3), ours: fmt(c.now.official) })} <a href="#rules">${t("tucan.why")}</a></div>` : ""}
         </section>
-        ${goal(c)}
+        ${S.goalOn ? goal(c) : ""}
       </div>
       <div class="grid2">
         <section class="card"><h2>${t("next.title")}</h2>${todo.length ? `<ul class="todo">${todo.join("")}</ul>` : `<p class="empty">${t("hints.none")}</p>`}</section>

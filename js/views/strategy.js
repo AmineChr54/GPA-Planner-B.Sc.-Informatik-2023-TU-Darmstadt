@@ -91,13 +91,25 @@
         </tbody></table></div>` : `<p class="empty" style="padding:14px 16px">${t("scen.noDiff")}</p>`}</section>` : `<section class="card"><p class="empty">${t("scen.onlyOne")}</p></section>`}`;
   }
 
-  UI.views.strategy = (c) => `
+  /* opt-in: a short intro until the student starts it */
+  function intro() {
+    return `<div class="page-head"><div><h1>${t("goal.introTitle")}</h1><p class="lede">${t("goal.introLede")}</p></div></div>
+      <section class="card goal-intro">
+        <ol class="goal-steps">${["i1", "i2", "i3"].map((k, i) => `<li><span class="n">${i + 1}</span><span>${t("goal." + k)}</span></li>`).join("")}</ol>
+        <p class="fine">${t("goal.note")}</p>
+        <div class="actions"><button class="btn primary" data-act="goalOn">${icon("strategy")}${t("goal.start")}</button></div>
+      </section>`;
+  }
+
+  UI.views.strategy = (c) => !Store.get().goalOn ? intro() : `
     <div class="page-head"><div><h1>${t("strategy.title")}</h1><p class="lede">${t("strategy.lede")}</p></div>
-      <div class="head-actions"><label class="inline">${t("k.target")} <input class="target-in sm" data-key="target2" type="text" inputmode="decimal" value="${fmt(c.target)}"></label>
+      <div class="head-actions"><button class="btn ghost sm" data-act="goalOff">${t("goal.off")}</button><label class="inline">${t("k.target")} <input class="target-in sm" data-key="target2" type="text" inputmode="decimal" value="${fmt(c.target)}"></label>
         <div class="seg" role="tablist"><button class="${state.stratTab === "opt" ? "on" : ""}" data-act="stratTab" data-v="opt">${t("nav.optimizer")}</button><button class="${state.stratTab === "scen" ? "on" : ""}" data-act="stratTab" data-v="scen">${t("nav.scenarios")}${Store.get().scenarios.length > 1 ? " (" + Store.get().scenarios.length + ")" : ""}</button></div></div></div>
     ${state.stratTab === "scen" ? scenarios() : optimizer(c)}`;
 
   UI.act.stratTab = (el) => { state.stratTab = el.dataset.v; UI.render(); };
+  UI.act.goalOn = () => { Store.setGoal(true); UI.toast(t("goal.onToast"), "good"); };
+  UI.act.goalOff = () => { if (confirm(t("goal.offConfirm"))) { Store.setGoal(false); UI.toast(t("goal.offToast")); } };
   UI.act.applyOpt = () => { const r = window.__opt; if (!r) return; Store.set(() => { for (const [m, g] of r.grades) { const x = Store.byId(m.id); if (x) { x.grade = g; x.gradeSet = true; } } }); UI.toast(t("opt.applied"), "good"); };
   UI.act.optScenario = () => {
     const r = window.__opt; if (!r) return;

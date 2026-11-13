@@ -65,7 +65,7 @@
         <button class="icon-btn" data-act="close" aria-label="${t("close")}">${icon("x")}</button></header>
       <div class="form">
         <div class="lbl full">${t("col.status")}<div class="seg" role="group">${statuses.map((s) => `<button type="button" class="${m.status === s ? "on" : ""}" data-act="setStatus" data-id="${m.id}" data-v="${s}">${t("status." + s)}</button>`).join("")}</div></div>
-        ${m.ungraded ? `<p class="fine full">${t("ungradedNote")}</p>` : Engine.counts(m) ? `<label>${m.status === "done" ? t("col.grade") : t("f.goalGrade")}<select data-id="${m.id}" data-f="grade">${UI.gradeSelectOptions(m)}</select></label>` : ""}
+        ${m.ungraded ? `<p class="fine full">${t("ungradedNote")}</p>` : Engine.counts(m) ? `<label>${m.status === "done" ? t("col.grade") : Store.get().goalOn ? t("f.goalGrade") : t("f.planGrade")}<select data-id="${m.id}" data-f="grade">${UI.gradeSelectOptions(m)}</select></label>` : ""}
         <label>${t("f.sem")}<select data-id="${m.id}" data-f="sem"><option value="">${t("unplanned")}</option>${sems.map((n) => `<option value="${n}" ${+m.sem === n ? "selected" : ""}>${esc(semLabel(n))}</option>`).join("")}</select></label>
         ${editable ? `<label class="full">${t("f.name")}<input type="text" value="${esc(m.name)}" data-id="${m.id}" data-f="name"></label>` : ""}
         ${editable && !m.abroad && !m.choice ? `<label>${t("f.code")}<input type="text" value="${esc(m.code || "")}" data-id="${m.id}" data-f="code"></label>` : ""}
@@ -81,7 +81,7 @@
         ${m.status === "open" && !m.ungraded ? `
           <h3>${t("f.exam")}</h3>
           <label>${t("col.attempt")}<select data-id="${m.id}" data-f="attempts">${[0, 1, 2].map((k) => `<option value="${k}" ${(m.attempts || 0) === k ? "selected" : ""}>${t("att.opt" + k)}</option>`).join("")}</select></label>
-          <label>${t("col.date")}<input type="date" value="${esc((UI.examOf(m) || {}).date || "")}" data-id="${m.id}" data-f="examDate">${(() => { const ex = UI.examOf(m); return !ex ? "" : ex.official ? `<span class="fine">${t("ed.official")}${ex.start ? " · " + ex.start + (ex.end ? "–" + ex.end : "") : ""}</span>` : ex.offDate ? `<button class="linklike fine" data-act="edReset" data-id="${m.id}">↺ ${t("ed.resetTo", { d: UI.dateShort(ex.offDate) })}</button>` : ""; })()}</label>
+          <label>${t("col.date")}<input type="date" value="${esc((UI.examOf(m) || {}).date || "")}" data-id="${m.id}" data-f="examDate">${examNote(m)}</label>
           <h3>${t("f.strategy")}</h3>
           <div class="lbl">${t("opt.diff")}<div class="seg">${[1, 2, 3].map((d) => `<button type="button" class="${(m.diff || 2) === d ? "on" : ""}" data-act="diff" data-id="${m.id}" data-v="${d}">${t("diff." + d)}</button>`).join("")}</div></div>
           <label>${t("opt.floor")}<select data-id="${m.id}" data-f="floor">${gradeOptions(m.floor || 1.0)}</select></label>` : ""}
@@ -95,23 +95,36 @@
     UI.modal(html, "has-c a-" + m.a);
   };
 
+  /* under the date field: where the date comes from. The current schedule's exam is shown even when the
+     module sits in another semester – then with that schedule's term, e.g. "Termin im WiSe 26/27" */
+  function examNote(m) {
+    const ex = UI.examOf(m), time = (x) => (x.start ? " · " + x.start + (x.end ? "–" + x.end : "") : "");
+    if (ex && ex.official) return `<span class="fine">${ex.otherTerm ? t("ed.otherTerm", { term: esc(ex.otherTerm) }) : t("ed.official")}${time(ex)}</span>`;
+    if (ex && ex.offDate) return `<button class="linklike fine" data-act="edReset" data-id="${m.id}">↺ ${t("ed.resetTo", { d: UI.dateShort(ex.offDate) })}</button>`;
+    const sch = !ex && UI.scheduleExam(m);
+    return sch ? `<span class="fine">${t("ed.schedHint", { term: esc(ExamDates.get().term), d: UI.dateShort(sch.date) })}${time(sch)}</span>` : "";
+  }
+
   /* ---------------- Notenspiegel (grade distribution from TUCaN screenshots) ---------------- */
+  // "WiSe 2025/26" → 4051, "SoSe 2026" → 4052: newest first
+  const termKey = (x) => { const r = /(WiSe|SoSe)\s*(\d{4})/.exec(x) || []; return +r[2] * 2 + (r[1] === "WiSe" ? 1 : 0) || 0; };
   UI.statsSection = (m) => {
     const code = m.code || (m.choice && m.choice[0] && m.choice[0].code);
-    const terms = GradeStats.terms(code);
+    const terms = GradeStats.terms(code).sort((a, b) => termKey(b) - termKey(a));
     if (!terms.length) return "";
     if (state.statsFor !== code) { state.statsFor = code; state.statsTerm = ""; }
     const s = GradeStats.summary(code, state.statsTerm || null);
     const max = Math.max(...s.counts);
     const pct = (c) => Math.round((c / s.n) * 100);
-    const bars = s.counts.map((c, i) => `<div class="ns-bar ${i === 10 ? "fail" : ""}" style="height:${Math.max(2, (c / max) * 100)}%" title="${esc(t("ns.barTitle", { g: UI.fmtG(GradeStats.G[i]), c, p: pct(c) }))}" aria-label="${esc(t("ns.barTitle", { g: UI.fmtG(GradeStats.G[i]), c, p: pct(c) }))}"></div>`).join("");
+    // the count sits on top of each bar, so the chart is the table too
+    const bars = s.counts.map((c, i) => { const tip = esc(t("ns.barTitle", { g: UI.fmtG(GradeStats.G[i]), c, p: pct(c) }));
+      return `<div class="ns-col" title="${tip}" aria-label="${tip}"><span class="ns-c ${c ? "" : "zero"}">${c}</span><div class="ns-bar ${i === 10 ? "fail" : ""}" style="height:calc((100% - 16px) * ${Math.max(0.02, c / max).toFixed(3)})"></div></div>`; }).join("");
     const chips = terms.length > 1 ? `<div class="chips ns-terms"><button type="button" class="chip-btn ${!state.statsTerm ? "on" : ""}" data-act="statsTerm" data-v="">${t("ns.allTerms", { n: terms.length })}</button>${terms.map((x) => `<button type="button" class="chip-btn ${state.statsTerm === x ? "on" : ""}" data-act="statsTerm" data-v="${esc(x)}">${esc(x)}</button>`).join("")}</div>` : "";
     const miss = [s.missing.sick ? t("ns.sick", { n: s.missing.sick }) : "", s.missing.absent ? t("ns.absent", { n: s.missing.absent }) : ""].filter(Boolean).join(" · ");
     return `<div class="full ns"><h3>${t("ns.title")} <span class="fine">${terms.length === 1 ? esc(terms[0]) : ""}</span></h3>${chips}
       <div class="ns-kpis"><span>${t("ns.avgPassed")} <b>${s.avgPassed != null ? fmt(s.avgPassed) : "–"}</b></span><span>${t("ns.fail")} <b class="${s.failRate >= 0.3 ? "bad-txt" : ""}">${pct(s.counts[10])} %</b></span><span>${t("ns.avgAll")} <b>${fmt(s.avgAll, 3)}</b></span><span>${t("ns.n", { n: s.n })}</span></div>
       <div class="ns-bars" role="img" aria-label="${esc(t("ns.aria"))}">${bars}</div>
       <div class="ns-x">${GradeStats.G.map((g) => `<span>${UI.fmtG(g)}</span>`).join("")}</div>
-      <details class="ns-table"><summary class="fine">${t("ns.asTable")}</summary><table class="tbl"><tr><th>${t("col.grade")}</th>${GradeStats.G.map((g) => `<th class="num">${UI.fmtG(g)}</th>`).join("")}</tr><tr><td>${t("ns.count")}</td>${s.counts.map((c) => `<td class="num">${c}</td>`).join("")}</tr></table></details>
       <p class="fine">${miss ? miss + " · " : ""}${t("ns.source")}</p></div>`;
   };
   UI.act.statsTerm = (el) => { state.statsTerm = el.dataset.v; UI.renderModuleModal(); };

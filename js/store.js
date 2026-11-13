@@ -16,7 +16,7 @@ const Store = (() => {
   function fresh(lang) {
     const s = { id: "s" + Date.now().toString(36), name: lang === "en" ? "My plan" : "Mein Plan", target: 2.5, modules: withIds(blankModules()) };
     return {
-      v: 2, gradeV: 1, lang: lang || "de", theme: "light",
+      v: 2, gradeV: 1, lang: lang || "de", theme: "light", goalOn: false,
       start: guessStart(), active: s.id, scenarios: [s],
       sems: Array.from({ length: 6 }, () => ({ t: "n" })), // n = normal · u = Urlaubssemester · a = Auslandssemester
       oral: null, tucan: null, savedAt: null,
@@ -33,6 +33,7 @@ const Store = (() => {
     const st = fresh("de");
     const s = st.scenarios[0];
     s.target = d.target ?? 2.5;
+    st.goalOn = true; // the original planner was built around the goal
     s.modules = withIds(d.modules.map((m) => {
       const x = { ...m };
       if (x.a === "A" || x.a === "C") { const p = PFLICHT.find((p) => p[0] === x.code); if (p) x.rec = p[3]; }
@@ -54,6 +55,8 @@ const Store = (() => {
         d.gradeV = 1;
       }
       if (d.onboarded == null) d.onboarded = true; // data from before the welcome screen existed
+      // Ziel & Strategie became opt-in: keep it on for anyone who already set a goal of their own
+      if (d.goalOn == null) d.goalOn = d.scenarios.some((s) => +s.target !== 2.5);
       return d;
     }
     if (Array.isArray(d.modules)) return fromLegacy(d);
@@ -84,16 +87,23 @@ const Store = (() => {
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
   }
   function snapshot() { undo.push(JSON.stringify(S)); if (undo.length > 60) undo.shift(); }
-  /* unset planned grades = the grade needed for that scenario's goal */
+  /* unset planned grades = the grade needed for that scenario's goal (Ziel & Strategie on),
+     else the grade step nearest to the average so far (2,0 before the first grade) */
   function autoGrades() {
     if (typeof Engine === "undefined") return;
     for (const s of S.scenarios) {
       const open = s.modules.filter((m) => m.status === "open" && !m.ungraded && !m.gradeSet);
       if (!open.length) { s.auto = null; continue; }
-      s.auto = Engine.goalGrade(s.modules, s.target);
+      if (S.goalOn) s.auto = Engine.goalGrade(s.modules, s.target);
+      else {
+        const now = Engine.gpa(s.modules, "done").official;
+        const g = now == null ? 2.0 : GRADES.filter((x) => x <= 4.0).reduce((a, b) => (Math.abs(b - now) < Math.abs(a - now) ? b : a));
+        s.auto = { g, avg: true };
+      }
       open.forEach((m) => { m.grade = s.auto.g; });
     }
   }
+  function setGoal(on) { commit((S) => { S.goalOn = !!on; }); }
   function emit() { autoGrades(); save(); listeners.forEach((f) => f()); }
 
   /* mutate with undo + re-render */
@@ -289,7 +299,7 @@ const Store = (() => {
 
   return {
     load, get: () => S, sc, mods, byId, on: (f) => listeners.push(f), commit, set, undoLast, canUndo: () => undo.length > 0,
-    updateModule, addModule, removeModule, newScenario, renameScenario, deleteScenario, activate,
+    updateModule, addModule, removeModule, setGoal, newScenario, renameScenario, deleteScenario, activate,
     applyImport, fillGaps, replaceAll, reset, uid, emit, save,
     addSem, setSemType, insertSem, removeSem, markExported, snooze, deleteAll, hasData, ensureSems: () => ensureSems(S),
   };

@@ -43,7 +43,7 @@ const UI = (() => {
     strategy: "M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z",
     exams: "M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11",
     gear: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z",
-    undo: "M3 7v6h6M3 13a9 9 0 1 0 3-7.7L3 8",
+    undo: "M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11",
     plus: "M12 5v14M5 12h14",
     x: "M18 6L6 18M6 6l12 12",
     dots: "M12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM19 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM5 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2z",
@@ -120,22 +120,40 @@ const UI = (() => {
   function gradeSelectOptions(m) {
     if (m.status !== "open") return gradeOptions(+m.grade);
     const auto = !m.gradeSet;
-    return `<option value="auto" ${auto ? "selected" : ""}>${esc(t("grade.autoOpt", { g: fmtG(+(auto ? m.grade : (Store.sc().auto || { g: m.grade }).g)) }))}</option>` + gradeOptions(auto ? null : +m.grade);
+    return `<option value="auto" ${auto ? "selected" : ""}>${esc(t(Store.get().goalOn ? "grade.autoOpt" : "grade.autoOptAvg", { g: fmtG(+(auto ? m.grade : (Store.sc().auto || { g: m.grade }).g)) }))}</option>` + gradeOptions(auto ? null : +m.grade);
   }
 
-  /* the exam date that counts for a planned module: one typed in by hand wins, else the official schedule */
+  /* "WiSe 26/27" → 53, "SoSe 27" → 54: comparable term numbers */
+  function termOrd(label) {
+    const x = /^(WiSe|SoSe)\s*(\d{2})/.exec(label || "");
+    return x ? +x[2] * 2 + (x[1] === "WiSe" ? 1 : 0) : null;
+  }
+
+  /* the exam date that counts for a planned module: one typed in by hand wins, else the official schedule.
+     A module still open from an earlier semester (or not placed yet) takes the current schedule's exam,
+     marked with otherTerm = that schedule's term. */
   function examOf(m) {
     if (!m || m.status !== "open") return null;
-    const off = m.sem && typeof ExamDates !== "undefined" ? ExamDates.forModule(m, semInfo(+m.sem).term.label) : null;
+    const ED = typeof ExamDates !== "undefined" ? ExamDates : null, sched = ED && ED.get();
+    let off = m.sem && ED ? ED.forModule(m, semInfo(+m.sem).term.label) : null;
+    if (!off && sched && (!m.sem || termOrd(semInfo(+m.sem).term.label) < termOrd(sched.term))) {
+      off = ED.forModule(m, sched.term);
+      if (off) off = { ...off, otherTerm: sched.term };
+    }
     if (m.examDate) {
       const same = off && off.date === m.examDate;
       return { date: m.examDate, start: same ? off.start : "", end: same ? off.end : "", official: !!same, offDate: off && !same ? off.date : null };
     }
-    return off ? { date: off.date, start: off.start, end: off.end, official: true } : null;
+    return off ? { date: off.date, start: off.start, end: off.end, official: true, otherTerm: off.otherTerm || null } : null;
+  }
+  /* the schedule's exam for a module whatever semester it is planned in (for the dialog's hint) */
+  function scheduleExam(m) {
+    const ED = typeof ExamDates !== "undefined" ? ExamDates : null, sched = ED && ED.get();
+    return sched && m && m.code ? ED.forModule(m, sched.term) : null;
   }
 
   return {
-    gradeSelectOptions, examOf,
+    gradeSelectOptions, examOf, scheduleExam, termOrd,
     $, $$, esc, t, L, fmt, fmtG, delta, stufe, tone, areaName, areaShort, groupName, today, daysUntil, dateShort, pill, big, gradeOptions,
     AREA_ORDER, semInfo, semLabel, icon, LOGO, modal, closeModal, openMenu, openMenuAt, closeMenu, toast, loadScript, state,
     views: {}, act: {}, change: {}, after: {},

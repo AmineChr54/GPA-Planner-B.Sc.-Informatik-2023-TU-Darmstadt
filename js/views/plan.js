@@ -24,7 +24,7 @@
   function boxGrade(m) {
     if (m.status === "done") return `<span class="bx-g">✓ ${m.ungraded ? t("passedShort") : fmtG(+m.grade)}</span>`;
     if (m.status === "open" && !m.ungraded) return m.gradeSet ? `<span class="bx-g">${t("goalShort")} ${fmtG(+m.grade)}</span>`
-      : `<span class="bx-g auto" title="${esc(t("grade.autoTitle", { t: fmt(Store.sc().target) }))}">≈ ${fmtG(+m.grade)}</span>`;
+      : `<span class="bx-g auto" title="${esc(Store.get().goalOn ? t("grade.autoTitle", { t: fmt(Store.sc().target) }) : t("grade.autoTitleAvg"))}">≈ ${fmtG(+m.grade)}</span>`;
     if (m.status === "off") return `<span class="bx-g">${t("status.off")}</span>`;
     return "";
   }
@@ -149,7 +149,8 @@
     // draw at the real pixel width so text is never scaled up or down
     const view = document.getElementById("view");
     const W = Math.round(Math.max(320, Math.min(1400, (view ? view.clientWidth - 48 : 900) - 42))), H = 250, ml = 44, mr = 82, mt = 18, mb = 34, iw = W - ml - mr, ih = H - mt - mb;
-    const vals = pts.map((p) => p.v).concat([c.target]);
+    const goalOn = Store.get().goalOn;
+    const vals = pts.map((p) => p.v).concat(goalOn ? [c.target] : []);
     let lo = Math.min(...vals) - 0.1, hi = Math.max(...vals) + 0.1;
     if (hi - lo < 0.5) { const mid = (hi + lo) / 2; lo = mid - 0.25; hi = mid + 0.25; }
     lo = Math.max(1.0, lo); hi = Math.min(4.0, hi);
@@ -172,12 +173,12 @@
           <g class="grid">${ticks.map((v) => `<line x1="${ml}" x2="${ml + iw}" y1="${y(v)}" y2="${y(v)}"/>`).join("")}</g>
           <g class="axis">${ticks.map((v) => `<text x="${ml - 8}" y="${y(v) + 4}" text-anchor="end">${fmt(v, step < 0.2 ? 1 : 1)}</text>`).join("")}
             ${pts.map((p, i) => `<text x="${x(i)}" y="${H - 10}" text-anchor="middle">${gap < 56 ? p.fach + "." : t("semShortN", { n: p.fach })}</text>`).join("")}</g>
-          <line class="target" x1="${ml}" x2="${ml + iw}" y1="${ty}" y2="${ty}"/>
-          <text class="tlabel" x="${ml + iw + 8}" y="${ty + 4}">${t("k.target")} ${fmt(c.target)}</text>
+          ${goalOn ? `<line class="target" x1="${ml}" x2="${ml + iw}" y1="${ty}" y2="${ty}"/>
+          <text class="tlabel" x="${ml + iw + 8}" y="${ty + 4}">${t("k.target")} ${fmt(c.target)}</text>` : ""}
           ${solid}${dashed}
           <line class="xh" id="xh" x1="0" x2="0" y1="${mt}" y2="${mt + ih}" visibility="hidden"/>
           ${pts.map((p, i) => `<circle class="pt ${i <= doneIdx ? "" : "plan"}" cx="${x(i)}" cy="${y(p.v)}" r="5"/>`).join("")}
-          <text class="dlabel" x="${x(pts.length - 1) + 10}" y="${y(last.v) + (Math.abs(y(last.v) - ty) < 14 ? (y(last.v) < ty ? -8 : 16) : 4)}">${fmt(last.v)}</text>
+          <text class="dlabel" x="${x(pts.length - 1) + 10}" y="${y(last.v) + (goalOn && Math.abs(y(last.v) - ty) < 14 ? (y(last.v) < ty ? -8 : 16) : 4)}">${fmt(last.v)}</text>
           ${pts.map((p, i) => `<rect class="hit" data-i="${i}" x="${i === 0 ? ml - 20 : (x(i - 1) + x(i)) / 2}" y="${mt}" width="${(i === pts.length - 1 ? x(i) + 20 : (x(i) + x(i + 1)) / 2) - (i === 0 ? ml - 20 : (x(i - 1) + x(i)) / 2)}" height="${ih}"/>`).join("")}
         </svg>
         <div class="tip" id="tip" hidden></div>
@@ -306,7 +307,7 @@
     const graded = Engine.counts(m) && !m.ungraded && m.status !== "off";
     const grades = graded ? `<div class="mlabel">${m.status === "done" ? t("col.grade") : t("f.goalGrade")}</div>
       <div class="ctx-row ctx-grades">${GRADES.map((g) => set("grade", g, m.gradeSet || m.status === "done" ? Math.abs(+m.grade - g) < 1e-9 : false, fmtG(g), "tone-" + tone(g))).join("")}
-        ${m.status === "open" ? set("grade", "auto", !m.gradeSet, `≈ ${t("grade.auto")}`, "auto", t("grade.autoTitle", { t: fmt(S.scenarios.find((s) => s.id === S.active).target) })) : ""}</div>` : "";
+        ${m.status === "open" ? set("grade", "auto", !m.gradeSet, `≈ ${t("grade.auto")}`, "auto", S.goalOn ? t("grade.autoTitle", { t: fmt(S.scenarios.find((s) => s.id === S.active).target) }) : t("grade.autoTitleAvg")) : ""}</div>` : "";
     const sems = S.sems.map((_, i) => i + 1).filter((n) => semInfo(n).t !== "u" && (semInfo(n).t !== "a" || m.abroad));
     const move = `<div class="mlabel">${t("ctx.move")}</div><div class="ctx-row ctx-sems">${sems.map((n) => set("sem", n, +m.sem === n, semInfo(n).fach + ".", semInfo(n).t === "a" ? "abroad" : "", semLabel(n))).join("")}
       ${elective ? set("sem", "", !m.sem, t("ctx.pool"), "pool") : ""}</div>`;
