@@ -103,7 +103,7 @@
 
   UI.views.strategy = (c) => !Store.get().goalOn ? intro() : `
     <div class="page-head"><div><h1>${t("strategy.title")}</h1><p class="lede">${t("strategy.lede")}</p></div>
-      <div class="head-actions"><button class="btn ghost sm" data-act="goalOff">${t("goal.off")}</button><label class="inline">${t("k.target")} <input class="target-in sm" data-key="target2" type="text" inputmode="decimal" value="${fmt(c.target)}"></label>
+      <div class="head-actions"><button class="btn goal-off" data-act="goalOff" title="${esc(t("goal.offTitle"))}">${icon("power")}${t("goal.off")}</button><label class="inline">${t("k.target")} <input class="target-in sm" data-key="target2" type="text" inputmode="decimal" value="${fmt(c.target)}"></label>
         <div class="seg" role="tablist"><button class="${state.stratTab === "opt" ? "on" : ""}" data-act="stratTab" data-v="opt">${t("nav.optimizer")}</button><button class="${state.stratTab === "scen" ? "on" : ""}" data-act="stratTab" data-v="scen">${t("nav.scenarios")}${Store.get().scenarios.length > 1 ? " (" + Store.get().scenarios.length + ")" : ""}</button></div></div></div>
     ${state.stratTab === "scen" ? scenarios() : optimizer(c)}`;
 

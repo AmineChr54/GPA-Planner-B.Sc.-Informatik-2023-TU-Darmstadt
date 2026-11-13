@@ -76,11 +76,11 @@
       .sort((a, b) => (a.ex.date + a.ex.start).localeCompare(b.ex.date + b.ex.start)).slice(0, 4);
     const todo = exams.map(({ m, ex }) => {
       const d = daysUntil(ex.date);
-      return `<li class="exam ${d <= 7 ? "bad" : ""}"><span class="tic">${dateShort(ex.date).replace(" ", "<br>").slice(0, 12)}</span><span class="txt"><b>${esc(m.name)}</b> · ${d === 0 ? t("today") : d === 1 ? t("tomorrow") : t("inDays", { n: d })}${(m.attempts || 0) >= 2 ? " " + pill("bad", t("att.last")) : ""}</span></li>`;
+      return `<li class="exam ${d <= 7 ? "bad" : ""}"><span class="tic">${dateShort(ex.date)}</span><span class="txt"><b>${esc(m.name)}</b> · ${d === 0 ? t("today") : d === 1 ? t("tomorrow") : t("inDays", { n: d })}${(m.attempts || 0) >= 2 ? " " + pill("bad", t("att.last")) : ""}</span></li>`;
     }).concat(hs.slice(0, 6).map((h) => `<li class="${h.tone}"><span class="tic">${h.icon}</span><span class="txt">${h.html}</span>${h.act || ""}</li>`));
     const T = S.tucan;
     return `
-      <div class="page-head"><div><h1>${t("overview.title")}</h1><p class="lede">${t("overview.lede")}</p></div></div>
+      <div class="page-head"><div><h1>${t("overview.title")}</h1><p class="lede">${t(S.goalOn ? "overview.lede" : "overview.ledeNoGoal")}</p></div></div>
       ${S.migrated ? `<div class="banner info">${t("migrated")}</div>` : ""}
       <div class="ov-top ${S.goalOn ? "" : "solo"}">
         <section class="card hero">

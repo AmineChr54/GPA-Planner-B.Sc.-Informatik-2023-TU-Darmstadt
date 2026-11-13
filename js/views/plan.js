@@ -24,7 +24,7 @@
   function boxGrade(m) {
     if (m.status === "done") return `<span class="bx-g">✓ ${m.ungraded ? t("passedShort") : fmtG(+m.grade)}</span>`;
     if (m.status === "open" && !m.ungraded) return m.gradeSet ? `<span class="bx-g">${t("goalShort")} ${fmtG(+m.grade)}</span>`
-      : `<span class="bx-g auto" title="${esc(Store.get().goalOn ? t("grade.autoTitle", { t: fmt(Store.sc().target) }) : t("grade.autoTitleAvg"))}">≈ ${fmtG(+m.grade)}</span>`;
+      : `<span class="bx-g auto" title="${esc(UI.autoTitle(m))}">≈ ${fmtG(+m.grade)}</span>`;
     if (m.status === "off") return `<span class="bx-g">${t("status.off")}</span>`;
     return "";
   }
@@ -183,7 +183,7 @@
         </svg>
         <div class="tip" id="tip" hidden></div>
       </div>
-      <p class="fine" style="margin:6px 0 0">${t("chart.legend")}</p>
+      <p class="fine" style="margin:6px 0 0">${t(goalOn ? "chart.legend" : "chart.legendNoGoal")}</p>
     </section>`;
   }
 
@@ -307,7 +307,7 @@
     const graded = Engine.counts(m) && !m.ungraded && m.status !== "off";
     const grades = graded ? `<div class="mlabel">${m.status === "done" ? t("col.grade") : t("f.goalGrade")}</div>
       <div class="ctx-row ctx-grades">${GRADES.map((g) => set("grade", g, m.gradeSet || m.status === "done" ? Math.abs(+m.grade - g) < 1e-9 : false, fmtG(g), "tone-" + tone(g))).join("")}
-        ${m.status === "open" ? set("grade", "auto", !m.gradeSet, `≈ ${t("grade.auto")}`, "auto", S.goalOn ? t("grade.autoTitle", { t: fmt(S.scenarios.find((s) => s.id === S.active).target) }) : t("grade.autoTitleAvg")) : ""}</div>` : "";
+        ${m.status === "open" ? set("grade", "auto", !m.gradeSet, `≈ ${t("grade.auto")}`, "auto", UI.autoTitle(m)) : ""}</div>` : "";
     const sems = S.sems.map((_, i) => i + 1).filter((n) => semInfo(n).t !== "u" && (semInfo(n).t !== "a" || m.abroad));
     const move = `<div class="mlabel">${t("ctx.move")}</div><div class="ctx-row ctx-sems">${sems.map((n) => set("sem", n, +m.sem === n, semInfo(n).fach + ".", semInfo(n).t === "a" ? "abroad" : "", semLabel(n))).join("")}
       ${elective ? set("sem", "", !m.sem, t("ctx.pool"), "pool") : ""}</div>`;

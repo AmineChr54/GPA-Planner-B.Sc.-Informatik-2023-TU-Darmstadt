@@ -46,49 +46,86 @@
       <div class="tscroll"><table class="tbl"><thead><tr><th>${t("ed.date")}</th><th>${t("ed.time")}</th><th>${t("col.module")}</th></tr></thead><tbody id="ed-rows">${rows}</tbody></table></div></details>`;
   }
 
+  const weekday = (iso) => new Date(iso + "T00:00:00").toLocaleDateString(UI.L() === "de" ? "de-DE" : "en-GB", { weekday: "short" }).replace(".", "");
+  const nsChip = (m) => {
+    const st = typeof GradeStats !== "undefined" ? GradeStats.summary(m.code) : null;
+    if (!st || st.n < 20) return "";
+    const fr = Math.round(st.failRate * 100);
+    return `<span class="chip ns-chip ${fr >= 30 ? "risk" : ""}" title="${esc(t("ns.chipTitle", { n: st.n, exams: st.exams }))}">Ø ${fmt(st.avgPassed)} · ${fr} % ${t("ns.failWord")}</span>`;
+  };
+  const att = (m) => ((m.attempts || 0) >= 2 ? pill("bad", t("att.last")) : m.attempts === 1 ? pill("warn", t("att.second")) : "");
+  const nameBtn = (m) => `<button class="linklike mname" data-act="open" data-id="${m.id}">${esc(m.name)}</button>`;
+  /* the term the exam list is about: the schedule's, else today's */
+  function currentTerm(ed) {
+    if (ed && ed.term) return ed.term;
+    const d = new Date(), y = d.getFullYear() % 100, mo = d.getMonth() + 1;
+    return mo >= 10 ? `WiSe ${y}/${y + 1}` : mo <= 3 ? `WiSe ${y - 1}/${y}` : `SoSe ${y}`;
+  }
+
+  /* my exams this term in date order, with the days in between ("5 Tage bis zur nächsten") */
+  function timeline(rows, clash) {
+    const out = [];
+    rows.forEach(({ m, ex }, i) => {
+      if (i) {
+        const gap = Math.round((Date.parse(ex.date) - Date.parse(rows[i - 1].ex.date)) / 864e5);
+        out.push(`<li class="xgap ${gap <= 2 ? "tight" : ""}"><span>${gap === 0 ? t("ex.sameDay") : t("ex.gap", { n: gap })}</span></li>`);
+      }
+      const d = daysUntil(ex.date), cl = clash.get(m.id);
+      out.push(`<li class="xr ${cl ? "clash" : ""}">
+        <div class="xd"><b>${dateShort(ex.date)}</b><span>${weekday(ex.date)}${ex.start ? " · " + when(ex) : ""}</span></div>
+        <div class="xm">${nameBtn(m)}
+          <div class="meta"><span>${areaShort(m.a)}</span><span>${fmt(+m.cp, 0)} CP</span>${att(m)}${nsChip(m)}${!ex.official ? `<span class="chip">${t("ex.ownDate")}</span>` : ex.otherTerm ? `<span class="chip">${t("ex.fromEarlier")}</span>` : ""}</div>
+          ${cl ? `<div class="xclash">${icon("warn", "ic")}<span>${t("ed.clash", { other: esc(cl.join(", ")) })}</span></div>` : ""}</div>
+        <div class="xc ${d <= 7 ? "soon" : ""}">${countdown(d)}</div></li>`);
+    });
+    return `<ul class="xlist">${out.join("")}</ul>`;
+  }
+
   UI.views.exams = (c) => {
-    const S = Store.get(), ed = ExamDates.get();
-    const open = c.ms.filter((m) => m.status === "open" && !m.ungraded && !m.choice)
-      .map((m) => ({ m, ex: UI.examOf(m) }))
-      .sort((a, b) => ((a.ex && a.ex.date) || "9999").localeCompare((b.ex && b.ex.date) || "9999") || (a.m.sem || 99) - (b.m.sem || 99));
-    const upcoming = open.filter((x) => x.ex && daysUntil(x.ex.date) >= 0);
+    const S = Store.get(), ed = ExamDates.get(), term = currentTerm(ed), cur = UI.termOrd(term);
+    const semOrd = (m) => (m.sem ? UI.termOrd(UI.semInfo(+m.sem).term.label) : null);
+    const all = c.ms.filter((m) => m.status === "open" && !m.ungraded && !m.choice).map((m) => ({ m, ex: UI.examOf(m) }));
+    const upcoming = all.filter((x) => x.ex && daysUntil(x.ex.date) >= 0).sort((a, b) => (a.ex.date + a.ex.start).localeCompare(b.ex.date + b.ex.start));
+    const pending = all.filter((x) => x.ex && daysUntil(x.ex.date) < 0).sort((a, b) => b.ex.date.localeCompare(a.ex.date));
+    const noDate = all.filter((x) => !x.ex && semOrd(x.m) === cur);
+    const used = new Set([...upcoming, ...pending, ...noDate].map((x) => x.m.id));
+    const later = all.filter((x) => !used.has(x.m.id));
     const clash = clashes(upcoming);
     const dropped = c.ms.filter((m) => m.status === "dropped");
     const budgets = Engine.abwahlAreas().map((x) => {
-      const used = Engine.abwahlUsed(c.ms, x.key);
-      return `<div class="budget a-${x.a} ${used ? "used" : ""}" style="--c:var(--a-${x.a})"><span>${esc(x.g ? groupName("B112", x.g) : areaShort("B111"))}</span><b>${used}/1</b></div>`;
+      const n = Engine.abwahlUsed(c.ms, x.key);
+      return `<div class="budget a-${x.a} ${n ? "used" : ""}" style="--c:var(--a-${x.a})"><span>${esc(x.g ? groupName("B112", x.g) : areaShort("B111"))}</span><b>${n}/1</b></div>`;
     }).join("") + `<div class="budget free" style="--c:var(--a-B12)"><span>${areaShort("B12")}</span><b>∞</b></div><div class="budget free" style="--c:var(--a-B2)"><span>${areaShort("B2")}</span><b>∞</b></div>`;
-    const att = (m) => ((m.attempts || 0) >= 2 ? " " + pill("bad", t("att.last")) : m.attempts === 1 ? " " + pill("warn", t("att.second")) : "");
+
+    // "Später": grouped by semester; modules still open from earlier semesters come first
+    const groups = new Map();
+    for (const x of later.sort((a, b) => (semOrd(a.m) ?? 999) - (semOrd(b.m) ?? 999))) {
+      const o = semOrd(x.m), key = o == null ? t("ex.noSem") : o < cur ? t("ex.earlier") : UI.semLabel(+x.m.sem);
+      (groups.get(key) || groups.set(key, []).get(key)).push(x);
+    }
+    const laterHtml = [...groups].map(([label, xs]) => `<div class="lgrp"><h3>${esc(label)}</h3><ul>${xs.map(({ m }) => {
+      const sch = UI.scheduleExam(m);
+      return `<li><span class="sw" style="background:var(--a-${m.a})"></span>${nameBtn(m)}<span class="muted fine">${fmt(+m.cp, 0)} CP</span>${att(m)}${sch ? `<span class="fine muted">${t("ex.alsoNow", { term: esc(ed.term), d: dateShort(sch.date) })}</span>` : ""}</li>`;
+    }).join("")}</ul></div>`).join("");
+
     return `
       <div class="page-head"><div><h1>${t("exams.title")}</h1><p class="lede">${t("exams.lede")}</p></div>
         ${upcoming.length ? `<div class="head-actions"><button class="btn" data-act="edIcs">${icon("download")}${t("ed.ics")}</button></div>` : ""}</div>
       ${sourceCard(ed)}
-      <section class="card"><h2>${t("exams.upcoming")}</h2>${upcoming.length ? `<ul class="upc">${upcoming.map(({ m, ex }) => {
-        const d = daysUntil(ex.date), cl = clash.get(m.id);
-        return `<li class="${cl ? "clash" : ""}"><span class="date">${dateShort(ex.date)}${ex.start ? `<small>${when(ex)}</small>` : ""}</span>
-          <span class="nm">${esc(m.name)}${att(m)}${cl ? `<div class="fine bad-txt">${icon("warn", "ic")} ${t("ed.clash", { other: esc(cl.join(", ")) })}</div>` : ""}</span>
-          <span class="cd ${d <= 7 ? "soon" : ""}">${countdown(d)}</span></li>`;
-      }).join("")}</ul>` : `<p class="empty">${ed ? t("ed.noneMine", { term: esc(ed.term) }) : t("exams.noneYet")}</p>`}</section>
-      <section class="card flush"><header class="card-h"><h2>${t("exams.all")}</h2><span class="sub">${t("exams.allSub")}</span></header>
-        <div class="tscroll"><table class="tbl ex"><thead><tr><th>${t("col.module")}</th><th>${t("col.date")}</th><th>${t("col.attempt")}</th><th class="hide-s">${t("col.rule")}</th><th></th></tr></thead><tbody>
-        ${open.map(({ m, ex }) => {
-          const cd = Engine.canDrop(c.ms, m), a = m.attempts || 0;
-          const rule = m.a === "A" || m.a === "C" ? t("rule.pflicht") : m.a === "B12" || m.a === "B2" ? t("rule.six") : cd.ok ? t("rule.five") : t("rule.fiveUsed");
-          const d = ex ? daysUntil(ex.date) : null;
-          const note = !ex ? "" : ex.official ? `<div class="fine">${t("ed.official")}${ex.start ? " · " + when(ex) : ""}</div>`
-            : ex.offDate ? `<div class="fine"><button class="linklike" data-act="edReset" data-id="${m.id}">↺ ${t("ed.resetTo", { d: dateShort(ex.offDate) })}</button></div>` : "";
-          return `<tr class="${a >= 2 ? "risk" : ""}"><td class="cell-name" style="border-left:4px solid var(--a-${m.a})"><button class="linklike mname" data-act="open" data-id="${m.id}">${esc(m.name)}</button><div class="meta"><span>${areaShort(m.a)}</span><span>${fmt(+m.cp, 0)} CP</span>${m.sem ? `<span>${esc(UI.semLabel(+m.sem))}</span>` : ""}</div></td>
-            <td><input type="date" value="${esc(ex ? ex.date : "")}" data-id="${m.id}" data-f="examDate" data-key="ed-${m.id}" aria-label="${t("col.date")}">${note}${d != null ? `<div class="fine ${d >= 0 && d <= 7 ? "soon" : ""}">${countdown(d)}</div>` : ""}</td>
-            <td><select data-id="${m.id}" data-f="attempts" data-key="at-${m.id}" class="${a >= 2 ? "risk" : a === 1 ? "warnsel" : ""}" aria-label="${t("col.attempt")}">${[0, 1, 2].map((k) => `<option value="${k}" ${a === k ? "selected" : ""}>${t("att.opt" + k)}</option>`).join("")}</select></td>
-            <td class="hide-s fine">${rule}</td>
-            <td>${cd.ok ? `<button class="btn sm ghost" data-act="drop" data-id="${m.id}">${t("btn.drop")}</button>` : ""}</td></tr>`;
-        }).join("")}</tbody></table></div></section>
+      <section class="card"><header class="sec-h"><h2>${t("ex.thisTerm", { term: esc(term) })}</h2>
+          <span class="sub">${upcoming.length ? t("ex.count", { n: upcoming.length }) : ""}</span></header>
+        ${upcoming.length ? timeline(upcoming, clash) : `<p class="empty">${ed ? t("ed.noneMine", { term: esc(ed.term) }) : t("exams.noneYet")}</p>`}
+        ${noDate.length ? `<div class="nodate"><h3>${t("ex.noDate")}</h3><p class="fine">${t("ex.noDateSub")}</p>${noDate.map(({ m }) => `<div class="nd-row">${nameBtn(m)}${att(m)}<input type="date" data-id="${m.id}" data-f="examDate" data-key="ed-${m.id}" aria-label="${t("col.date")}"></div>`).join("")}</div>` : ""}
+      </section>
+      ${pending.length ? `<section class="card"><h2>${t("ex.pending")}</h2><p class="fine" style="margin-top:-6px">${t("ex.pendingSub")}</p>
+        <ul class="pend">${pending.map(({ m, ex }) => `<li><span class="fine muted">${dateShort(ex.date)}</span>${nameBtn(m)}${att(m)}<button class="btn sm primary" data-act="open" data-id="${m.id}">${t("ex.enterGrade")}</button></li>`).join("")}</ul></section>` : ""}
+      ${later.length ? `<details class="card later" ${state.laterOpen ? "open" : ""}><summary><h2>${t("ex.later")}</h2><span class="sub">${t("ex.laterSub", { n: later.length })}</span></summary>${laterHtml}</details>` : ""}
       ${allList(ed, c)}
       <div class="grid2">
+        <section class="card"><h2>${t("abwahl.title")}</h2><p class="fine" style="margin-top:-6px">${t("abwahl.text")} ${t("ex.dropHow")}</p><div class="budgets">${budgets}</div></section>
         <section class="card"><h2>${t("oral.title")}</h2><p class="fine" style="margin-top:-6px">${t("oral.text")}</p>
           <label class="switch"><input type="checkbox" data-act-change="oral" data-key="oral" ${S.oral ? "checked" : ""}><span>${S.oral ? t("oral.used") : t("oral.free")}</span></label>
           ${S.oral ? `<input type="text" class="wide" placeholder="${t("oral.which")}" value="${esc(S.oral.module || "")}" data-act-change="oralWhich" data-key="oralw">` : ""}</section>
-        <section class="card"><h2>${t("abwahl.title")}</h2><p class="fine" style="margin-top:-6px">${t("abwahl.text")}</p><div class="budgets">${budgets}</div></section>
       </div>
       ${dropped.length ? `<section class="card"><h2>${t("dropped.title")}</h2><ul class="hints">${dropped.map((m) => `<li class="hint info"><span class="hdot"></span><span class="htxt">${esc(m.name)} · ${areaShort(m.a)}${m.g ? " · " + esc(groupName(m.a, m.g)) : ""}</span><button class="btn sm" data-act="undrop" data-id="${m.id}">${t("btn.undrop")}</button></li>`).join("")}</ul></section>` : ""}`;
   };
@@ -98,6 +135,7 @@
     const filter = () => { const v = (q.value || "").trim().toLowerCase(); state.edQ = v; $$("#ed-rows tr").forEach((r) => { r.hidden = v && !r.dataset.q.includes(v); }); };
     if (q) { q.addEventListener("input", filter); filter(); }
     const det = $(".ed-all"); if (det) det.addEventListener("toggle", () => { state.edAllOpen = det.open; });
+    const lat = $(".later"); if (lat) lat.addEventListener("toggle", () => { state.laterOpen = lat.open; });
     const f = $(".ed-file");
     if (f) f.addEventListener("change", async () => {
       if (!f.files[0]) return;

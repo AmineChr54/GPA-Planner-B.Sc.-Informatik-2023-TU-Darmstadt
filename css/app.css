@@ -125,6 +125,10 @@ textarea { width: 100%; resize: vertical; font-family: var(--mono); font-size: 1
 .a-A { --c: var(--a-A); } .a-C { --c: var(--a-C); } .a-B111 { --c: var(--a-B111); } .a-B112 { --c: var(--a-B112); } .a-B12 { --c: var(--a-B12); } .a-B2 { --c: var(--a-B2); }
 
 /* ---------------- page ---------------- */
+/* footer at the bottom of the window, also on short pages */
+main { min-height: calc(100vh - 60px); display: flex; flex-direction: column; }
+main > .view { flex: 1 0 auto; width: 100%; box-sizing: border-box; }
+main > .foot { width: 100%; box-sizing: border-box; }
 .view { max-width: 1180px; margin: 0 auto; padding: 26px 24px 90px; display: flex; flex-direction: column; gap: 18px; }
 .view[data-view="plan"] { max-width: 1440px; }
 .page-head { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: flex-end; justify-content: space-between; }
@@ -211,7 +215,7 @@ textarea { width: 100%; resize: vertical; font-family: var(--mono); font-size: 1
 .todo li.warn .tic { background: var(--warn-soft); color: var(--warn); }
 .todo li.info .tic { background: var(--info-soft); color: var(--info); }
 .todo li.good .tic { background: var(--good-soft); color: var(--good); }
-.todo li.exam .tic { background: var(--surface-2); color: var(--ink-2); font-size: 11px; }
+.todo li.exam .tic { width: auto; min-width: 62px; height: 26px; padding: 0 9px; border-radius: 99px; background: var(--surface-2); color: var(--ink-2); font-size: 12px; white-space: nowrap; }
 .todo .txt { flex: 1; }
 
 /* area progress */
@@ -524,6 +528,10 @@ td.acts { white-space: nowrap; text-align: right; width: 70px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip-btn { font: inherit; font-size: 12.5px; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink-2); border-radius: 99px; padding: 3px 11px; cursor: pointer; }
 .chip-btn.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.chip-sel { font: inherit; font-size: 12.5px; min-height: 0; height: auto; width: auto; border: 1px solid var(--line-2); background-color: var(--surface); color: var(--ink-2); border-radius: 99px; padding: 3px 26px 3px 11px; cursor: pointer; }
+.chip-sel.on { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.ns-terms { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-bottom: 8px; }
+.ns-terms > * { flex: none; }
 .cat-list { overflow-y: auto; flex: 1; }
 .cat-item { display: flex; gap: 12px; align-items: center; padding: 9px 18px; border-bottom: 1px solid var(--line); }
 .cat-item > div:first-child { flex: 1; min-width: 0; }
@@ -583,3 +591,62 @@ td.acts { white-space: nowrap; text-align: right; width: 70px; }
 .exporting .pgrid { grid-template-columns: repeat(var(--n), minmax(138px, 1fr)); min-width: calc(var(--n) * 141px); }
 .exporting .pgrid .pplus, .exporting .ctx-hint, .exporting .plan-scroll::before, .exporting .plan-scroll::after { display: none; }
 .plan-print.exporting .plan-wrap { overflow: visible; }
+
+/* ---------- Prüfungen: this semester as a timeline ---------- */
+.sec-h { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+.sec-h h2 { margin: 0; }
+.sec-h .sub { font-size: 12.5px; color: var(--muted); }
+.xlist { list-style: none; margin: 0; padding: 0; }
+.xr { display: grid; grid-template-columns: 112px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 10px 12px; margin: 0 -12px; border-radius: 8px; }
+.xr:hover { background: var(--surface-2); }
+.xd b { display: block; font-size: 15px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.xd span { display: block; font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.xm .mname { font-size: 14.5px; font-weight: 600; text-align: left; }
+.xm .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 3px; font-size: 12px; color: var(--muted); }
+.xc { font-size: 12.5px; color: var(--muted); white-space: nowrap; text-align: right; }
+.xc.soon { color: var(--bad); font-weight: 700; }
+.xr.clash { background: var(--bad-soft); }
+.xclash { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 12.5px; color: var(--bad); }
+.xclash .ic { width: 15px; height: 15px; flex: none; }
+.xgap { display: flex; align-items: center; gap: 10px; margin: 0 0 0 4px; padding: 2px 0 2px 112px; font-size: 11.5px; color: var(--muted); }
+.xgap span { padding: 1px 9px; border-radius: 99px; background: var(--surface-2); }
+.xgap.tight span { background: var(--warn-soft); color: var(--warn); font-weight: 600; }
+.ns-chip.risk { background: var(--bad-soft); color: var(--bad); }
+.nodate { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.nodate h3 { margin: 0 0 2px; font-size: 13.5px; }
+.nodate .fine { margin: 0 0 8px; }
+.nd-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; }
+.nd-row .mname { flex: 1; text-align: left; }
+.nd-row input[type="date"] { width: 160px; }
+.pend { list-style: none; margin: 0; padding: 0; }
+.pend li { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.pend li:last-child { border-bottom: 0; }
+.pend .mname { flex: 1; text-align: left; }
+.later > summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; gap: 10px; }
+.later > summary::-webkit-details-marker { display: none; }
+.later > summary h2 { margin: 0; }
+.later > summary h2::before { content: "▸"; display: inline-block; width: 18px; color: var(--muted); transition: transform .15s; }
+.later[open] > summary h2::before { transform: rotate(90deg); }
+.later > summary .sub { font-size: 12.5px; color: var(--muted); }
+.lgrp { margin-top: 14px; }
+.lgrp h3 { margin: 0 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.lgrp ul { list-style: none; margin: 0; padding: 0; }
+.lgrp li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 5px 0; border-bottom: 1px solid var(--line); }
+.lgrp li:last-child { border-bottom: 0; }
+.lgrp .sw { width: 4px; height: 18px; border-radius: 2px; flex: none; }
+.lgrp .mname { text-align: left; }
+@media (max-width: 640px) {
+  /* phone: date line on top, module below, countdown inline */
+  .xr { grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; }
+  .xd { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 8px; }
+  .xd b, .xd span { display: inline; }
+  .xd b { font-size: 14px; }
+  .xc { align-self: start; padding-top: 2px; }
+  .xgap { padding-left: 0; }
+  .nd-row { flex-wrap: wrap; }
+}
+
+/* Ziel & Strategie: switching it off is a real, visible action */
+.btn.goal-off { color: var(--ink-2); }
+.btn.goal-off .ic { width: 16px; height: 16px; }
+.btn.goal-off:hover { color: var(--bad); border-color: var(--bad); }

@@ -82,9 +82,9 @@
           <h3>${t("f.exam")}</h3>
           <label>${t("col.attempt")}<select data-id="${m.id}" data-f="attempts">${[0, 1, 2].map((k) => `<option value="${k}" ${(m.attempts || 0) === k ? "selected" : ""}>${t("att.opt" + k)}</option>`).join("")}</select></label>
           <label>${t("col.date")}<input type="date" value="${esc((UI.examOf(m) || {}).date || "")}" data-id="${m.id}" data-f="examDate">${examNote(m)}</label>
-          <h3>${t("f.strategy")}</h3>
+          ${Store.get().goalOn ? `<h3>${t("f.strategy")}</h3>
           <div class="lbl">${t("opt.diff")}<div class="seg">${[1, 2, 3].map((d) => `<button type="button" class="${(m.diff || 2) === d ? "on" : ""}" data-act="diff" data-id="${m.id}" data-v="${d}">${t("diff." + d)}</button>`).join("")}</div></div>
-          <label>${t("opt.floor")}<select data-id="${m.id}" data-f="floor">${gradeOptions(m.floor || 1.0)}</select></label>` : ""}
+          <label>${t("opt.floor")}<select data-id="${m.id}" data-f="floor">${gradeOptions(m.floor || 1.0)}</select></label>` : ""}` : ""}
         ${UI.statsSection(m)}
         ${m.sl ? `<p class="fine full"><b style="color:var(--bad)">*</b> ${t("legend.sl")}</p>` : ""}
       </div>
@@ -119,7 +119,9 @@
     // the count sits on top of each bar, so the chart is the table too
     const bars = s.counts.map((c, i) => { const tip = esc(t("ns.barTitle", { g: UI.fmtG(GradeStats.G[i]), c, p: pct(c) }));
       return `<div class="ns-col" title="${tip}" aria-label="${tip}"><span class="ns-c ${c ? "" : "zero"}">${c}</span><div class="ns-bar ${i === 10 ? "fail" : ""}" style="height:calc((100% - 16px) * ${Math.max(0.02, c / max).toFixed(3)})"></div></div>`; }).join("");
-    const chips = terms.length > 1 ? `<div class="chips ns-terms"><button type="button" class="chip-btn ${!state.statsTerm ? "on" : ""}" data-act="statsTerm" data-v="">${t("ns.allTerms", { n: terms.length })}</button>${terms.map((x) => `<button type="button" class="chip-btn ${state.statsTerm === x ? "on" : ""}" data-act="statsTerm" data-v="${esc(x)}">${esc(x)}</button>`).join("")}</div>` : "";
+    // one row: "Alle" + the newest terms as chips, older ones in a small dropdown
+    const shown = terms.length > 5 ? terms.slice(0, 3) : terms, older = terms.slice(shown.length);
+    const chips = terms.length > 1 ? `<div class="chips ns-terms"><button type="button" class="chip-btn ${!state.statsTerm ? "on" : ""}" data-act="statsTerm" data-v="">${t("ns.allTerms", { n: terms.length })}</button>${shown.map((x) => `<button type="button" class="chip-btn ${state.statsTerm === x ? "on" : ""}" data-act="statsTerm" data-v="${esc(x)}">${esc(x)}</button>`).join("")}${older.length ? `<select class="chip-sel ${older.includes(state.statsTerm) ? "on" : ""}" data-act-change="statsTerm" aria-label="${esc(t("ns.older", { n: older.length }))}"><option value="">${t("ns.older", { n: older.length })}</option>${older.map((x) => `<option value="${esc(x)}" ${state.statsTerm === x ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>` : ""}</div>` : "";
     const miss = [s.missing.sick ? t("ns.sick", { n: s.missing.sick }) : "", s.missing.absent ? t("ns.absent", { n: s.missing.absent }) : ""].filter(Boolean).join(" · ");
     return `<div class="full ns"><h3>${t("ns.title")} <span class="fine">${terms.length === 1 ? esc(terms[0]) : ""}</span></h3>${chips}
       <div class="ns-kpis"><span>${t("ns.avgPassed")} <b>${s.avgPassed != null ? fmt(s.avgPassed) : "–"}</b></span><span>${t("ns.fail")} <b class="${s.failRate >= 0.3 ? "bad-txt" : ""}">${pct(s.counts[10])} %</b></span><span>${t("ns.avgAll")} <b>${fmt(s.avgAll, 3)}</b></span><span>${t("ns.n", { n: s.n })}</span></div>
@@ -128,6 +130,7 @@
       <p class="fine">${miss ? miss + " · " : ""}${t("ns.source")}</p></div>`;
   };
   UI.act.statsTerm = (el) => { state.statsTerm = el.dataset.v; UI.renderModuleModal(); };
+  UI.change.statsTerm = (el) => { state.statsTerm = el.value; UI.renderModuleModal(); };
 
   /* ---------------- catalog picker (add, or add options to a choice block) ---------------- */
   UI.openCatalog = (area, mode = "add", id = null, sem = null) => {

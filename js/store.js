@@ -87,20 +87,30 @@ const Store = (() => {
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
   }
   function snapshot() { undo.push(JSON.stringify(S)); if (undo.length > 60) undo.shift(); }
-  /* unset planned grades = the grade needed for that scenario's goal (Ziel & Strategie on),
-     else the grade step nearest to the average so far (2,0 before the first grade) */
+  const nearest = (v) => GRADES.reduce((a, b) => (Math.abs(b - v) < Math.abs(a - v) ? b : a));
+  /* the estimate for a planned module without a grade of one's own (Ziel & Strategie off):
+     what students got there (Notenspiegel, average of the passes), else one's own average so far,
+     else 2,0 → { g, src: "ns" | "avg" | "none" } */
+  function estimate(m, modules) {
+    const code = m.code || (m.choice && m.choice[0] && m.choice[0].code);
+    const st = code && typeof GradeStats !== "undefined" ? GradeStats.summary(code) : null;
+    if (st && st.avgPassed != null && st.passed >= 10) return { g: nearest(st.avgPassed), src: "ns", n: st.n };
+    const now = Engine.gpa(modules || mods(), "done").official;
+    return now == null ? { g: 2.0, src: "none" } : { g: nearest(now), src: "avg" };
+  }
+  /* unset planned grades = the grade needed for that scenario's goal (Ziel & Strategie on), else the estimate */
   function autoGrades() {
     if (typeof Engine === "undefined") return;
     for (const s of S.scenarios) {
       const open = s.modules.filter((m) => m.status === "open" && !m.ungraded && !m.gradeSet);
       if (!open.length) { s.auto = null; continue; }
-      if (S.goalOn) s.auto = Engine.goalGrade(s.modules, s.target);
-      else {
-        const now = Engine.gpa(s.modules, "done").official;
-        const g = now == null ? 2.0 : GRADES.filter((x) => x <= 4.0).reduce((a, b) => (Math.abs(b - now) < Math.abs(a - now) ? b : a));
-        s.auto = { g, avg: true };
+      if (S.goalOn) {
+        s.auto = Engine.goalGrade(s.modules, s.target);
+        open.forEach((m) => { m.grade = s.auto.g; delete m.autoSrc; });
+      } else {
+        s.auto = { avg: true };
+        open.forEach((m) => { const e = estimate(m, s.modules); m.grade = e.g; m.autoSrc = e.src; });
       }
-      open.forEach((m) => { m.grade = s.auto.g; });
     }
   }
   function setGoal(on) { commit((S) => { S.goalOn = !!on; }); }
@@ -299,7 +309,7 @@ const Store = (() => {
 
   return {
     load, get: () => S, sc, mods, byId, on: (f) => listeners.push(f), commit, set, undoLast, canUndo: () => undo.length > 0,
-    updateModule, addModule, removeModule, setGoal, newScenario, renameScenario, deleteScenario, activate,
+    updateModule, addModule, removeModule, setGoal, estimate, newScenario, renameScenario, deleteScenario, activate,
     applyImport, fillGaps, replaceAll, reset, uid, emit, save,
     addSem, setSemType, insertSem, removeSem, markExported, snooze, deleteAll, hasData, ensureSems: () => ensureSems(S),
   };

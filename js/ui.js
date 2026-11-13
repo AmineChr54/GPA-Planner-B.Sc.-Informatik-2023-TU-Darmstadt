@@ -20,7 +20,7 @@ const UI = (() => {
   const groupName = (a, g) => { const gr = (GROUPS[a] || []).find((x) => x.id === g); return gr ? gr[L()] : g || ""; };
   const today = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
   const daysUntil = (iso) => Math.round((new Date(iso + "T00:00:00") - today()) / 864e5);
-  const dateShort = (iso) => new Date(iso + "T00:00:00").toLocaleDateString(L() === "de" ? "de-DE" : "en-GB", { day: "2-digit", month: "short" });
+  const dateShort = (iso) => new Date(iso + "T00:00:00").toLocaleDateString(L() === "de" ? "de-DE" : "en-GB", { day: "numeric", month: "short" });
   const pill = (tn, txt) => `<span class="pill ${tn}">${txt}</span>`;
   const big = (x) => `<span class="tone-${tone(x)}">${fmt(x)}</span>`;
   const gradeOptions = (sel) => GRADES.map((g) => `<option value="${g}" ${sel != null && Math.abs(g - sel) < 1e-9 ? "selected" : ""}>${fmtG(g)}</option>`).join("");
@@ -43,6 +43,7 @@ const UI = (() => {
     strategy: "M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z",
     exams: "M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11",
     gear: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z",
+    power: "M12 3v9M18.4 6.6a9 9 0 1 1-12.8 0",
     undo: "M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11",
     plus: "M12 5v14M5 12h14",
     x: "M18 6L6 18M6 6l12 12",
@@ -120,7 +121,16 @@ const UI = (() => {
   function gradeSelectOptions(m) {
     if (m.status !== "open") return gradeOptions(+m.grade);
     const auto = !m.gradeSet;
-    return `<option value="auto" ${auto ? "selected" : ""}>${esc(t(Store.get().goalOn ? "grade.autoOpt" : "grade.autoOptAvg", { g: fmtG(+(auto ? m.grade : (Store.sc().auto || { g: m.grade }).g)) }))}</option>` + gradeOptions(auto ? null : +m.grade);
+    let label;
+    if (Store.get().goalOn) label = t("grade.autoOpt", { g: fmtG(+(auto ? m.grade : (Store.sc().auto || { g: m.grade }).g)) });
+    else { const e = Store.estimate(m); label = t("grade.autoOpt_" + e.src, { g: fmtG(e.g) }); }
+    return `<option value="auto" ${auto ? "selected" : ""}>${esc(label)}</option>` + gradeOptions(auto ? null : +m.grade);
+  }
+
+  /* what an automatic "≈" grade means, for tooltips */
+  function autoTitle(m) {
+    if (Store.get().goalOn) return t("grade.autoTitle", { t: fmt(Store.sc().target) });
+    return t("grade.autoTitle_" + (m && m.autoSrc ? m.autoSrc : "avg"));
   }
 
   /* "WiSe 26/27" → 53, "SoSe 27" → 54: comparable term numbers */
@@ -153,7 +163,7 @@ const UI = (() => {
   }
 
   return {
-    gradeSelectOptions, examOf, scheduleExam, termOrd,
+    gradeSelectOptions, autoTitle, examOf, scheduleExam, termOrd,
     $, $$, esc, t, L, fmt, fmtG, delta, stufe, tone, areaName, areaShort, groupName, today, daysUntil, dateShort, pill, big, gradeOptions,
     AREA_ORDER, semInfo, semLabel, icon, LOGO, modal, closeModal, openMenu, openMenuAt, closeMenu, toast, loadScript, state,
     views: {}, act: {}, change: {}, after: {},
