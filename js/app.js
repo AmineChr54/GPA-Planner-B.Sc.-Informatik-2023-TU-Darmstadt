@@ -187,6 +187,9 @@
     if (state.modal && state.modal.type === "catalog") UI.renderCatalogList();
   });
   render();
+  // official exam dates (data/pruefungstermine.xlsx, or a file the student picked)
+  ExamDates.on(() => { render(); if (state.modal && state.modal.type === "catalog") UI.renderCatalogList(); });
+  ExamDates.load();
 
   // offline / installable when served over http(s) (GitHub Pages); file:// has no service workers
   if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(() => {});

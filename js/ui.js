@@ -122,8 +122,19 @@ const UI = (() => {
     return `<option value="auto" ${auto ? "selected" : ""}>${esc(t("grade.autoOpt", { g: fmtG(+(auto ? m.grade : (Store.sc().auto || { g: m.grade }).g)) }))}</option>` + gradeOptions(auto ? null : +m.grade);
   }
 
+  /* the exam date that counts for a planned module: one typed in by hand wins, else the official schedule */
+  function examOf(m) {
+    if (!m || m.status !== "open") return null;
+    const off = m.sem && typeof ExamDates !== "undefined" ? ExamDates.forModule(m, semInfo(+m.sem).term.label) : null;
+    if (m.examDate) {
+      const same = off && off.date === m.examDate;
+      return { date: m.examDate, start: same ? off.start : "", end: same ? off.end : "", official: !!same, offDate: off && !same ? off.date : null };
+    }
+    return off ? { date: off.date, start: off.start, end: off.end, official: true } : null;
+  }
+
   return {
-    gradeSelectOptions,
+    gradeSelectOptions, examOf,
     $, $$, esc, t, L, fmt, fmtG, delta, stufe, tone, areaName, areaShort, groupName, today, daysUntil, dateShort, pill, big, gradeOptions,
     AREA_ORDER, semInfo, semLabel, icon, LOGO, modal, closeModal, openMenu, openMenuAt, closeMenu, toast, loadScript, state,
     views: {}, act: {}, change: {}, after: {},

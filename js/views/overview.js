@@ -72,10 +72,11 @@
     const S = Store.get();
     if (!S.onboarded) return welcome();
     const hs = UI.hints(c);
-    const exams = c.ms.filter((m) => m.status === "open" && m.examDate && daysUntil(m.examDate) >= 0).sort((a, b) => a.examDate.localeCompare(b.examDate)).slice(0, 4);
-    const todo = exams.map((m) => {
-      const d = daysUntil(m.examDate);
-      return `<li class="exam ${d <= 7 ? "bad" : ""}"><span class="tic">${dateShort(m.examDate).replace(" ", "<br>").slice(0, 12)}</span><span class="txt"><b>${esc(m.name)}</b> · ${d === 0 ? t("today") : d === 1 ? t("tomorrow") : t("inDays", { n: d })}${(m.attempts || 0) >= 2 ? " " + pill("bad", t("att.last")) : ""}</span></li>`;
+    const exams = c.ms.filter((m) => m.status === "open").map((m) => ({ m, ex: UI.examOf(m) })).filter((x) => x.ex && daysUntil(x.ex.date) >= 0)
+      .sort((a, b) => (a.ex.date + a.ex.start).localeCompare(b.ex.date + b.ex.start)).slice(0, 4);
+    const todo = exams.map(({ m, ex }) => {
+      const d = daysUntil(ex.date);
+      return `<li class="exam ${d <= 7 ? "bad" : ""}"><span class="tic">${dateShort(ex.date).replace(" ", "<br>").slice(0, 12)}</span><span class="txt"><b>${esc(m.name)}</b> · ${d === 0 ? t("today") : d === 1 ? t("tomorrow") : t("inDays", { n: d })}${(m.attempts || 0) >= 2 ? " " + pill("bad", t("att.last")) : ""}</span></li>`;
     }).concat(hs.slice(0, 6).map((h) => `<li class="${h.tone}"><span class="tic">${h.icon}</span><span class="txt">${h.html}</span>${h.act || ""}</li>`));
     const T = S.tucan;
     return `

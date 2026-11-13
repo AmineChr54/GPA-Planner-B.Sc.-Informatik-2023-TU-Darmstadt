@@ -81,7 +81,7 @@
         ${m.status === "open" && !m.ungraded ? `
           <h3>${t("f.exam")}</h3>
           <label>${t("col.attempt")}<select data-id="${m.id}" data-f="attempts">${[0, 1, 2].map((k) => `<option value="${k}" ${(m.attempts || 0) === k ? "selected" : ""}>${t("att.opt" + k)}</option>`).join("")}</select></label>
-          <label>${t("col.date")}<input type="date" value="${esc(m.examDate || "")}" data-id="${m.id}" data-f="examDate"></label>
+          <label>${t("col.date")}<input type="date" value="${esc((UI.examOf(m) || {}).date || "")}" data-id="${m.id}" data-f="examDate">${(() => { const ex = UI.examOf(m); return !ex ? "" : ex.official ? `<span class="fine">${t("ed.official")}${ex.start ? " · " + ex.start + (ex.end ? "–" + ex.end : "") : ""}</span>` : ex.offDate ? `<button class="linklike fine" data-act="edReset" data-id="${m.id}">↺ ${t("ed.resetTo", { d: UI.dateShort(ex.offDate) })}</button>` : ""; })()}</label>
           <h3>${t("f.strategy")}</h3>
           <div class="lbl">${t("opt.diff")}<div class="seg">${[1, 2, 3].map((d) => `<button type="button" class="${(m.diff || 2) === d ? "on" : ""}" data-act="diff" data-id="${m.id}" data-v="${d}">${t("diff." + d)}</button>`).join("")}</div></div>
           <label>${t("opt.floor")}<select data-id="${m.id}" data-f="floor">${gradeOptions(m.floor || 1.0)}</select></label>` : ""}
@@ -120,7 +120,7 @@
     el.innerHTML = list.length ? list.map((c) => {
       const has = mode === "choice" ? inChoice.has(Tucan.baseCode(c.code)) : inPlan.has(Tucan.baseCode(c.code));
       return `<div class="cat-item ${has ? "has" : ""}"><div><div class="mname">${esc(c.name)}</div><div class="meta"><span class="mono">${esc(c.code)}</span>${c.g ? `<span class="chip">${esc(groupName(c.a, c.g))}</span>` : ""}<span>${c.lang === "en" ? "EN" : c.lang === "de" ? "DE" : "DE/EN"}</span></div></div>
-        <span class="num cat-cp">${c.cp} CP</span>${has ? pill("good", mode === "choice" ? t("cat.inChoice") : t("cat.inPlan")) : `<button class="btn sm" data-act="${mode === "choice" ? "catOption" : "catAdd"}" data-code="${esc(c.code)}">${mode === "choice" ? t("cat.asOption") : t("add")}</button>`}</div>`;
+        ${(() => { const e = typeof ExamDates !== "undefined" ? ExamDates.byCode(c.code).find((x) => !x.second) : null; return e ? `<span class="chip ed-chip" title="${esc(t("ed.chipTitle", { term: ExamDates.get().term }))}">${icon("exams", "ic")}${UI.dateShort(e.date)}</span>` : ""; })()}<span class="num cat-cp">${c.cp} CP</span>${has ? pill("good", mode === "choice" ? t("cat.inChoice") : t("cat.inPlan")) : `<button class="btn sm" data-act="${mode === "choice" ? "catOption" : "catAdd"}" data-code="${esc(c.code)}">${mode === "choice" ? t("cat.asOption") : t("add")}</button>`}</div>`;
     }).join("") : `<p class="empty" style="padding:16px 18px">${t("cat.none")}</p>`;
   };
 

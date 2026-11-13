@@ -417,6 +417,25 @@ td.acts { white-space: nowrap; text-align: right; width: 70px; }
 .menu .mi.danger .ic { color: var(--bad); }
 .menu hr { border: 0; border-top: 1px solid var(--line); margin: 6px 0; }
 .menu .mrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 10px; font-size: 12.5px; color: var(--muted); }
+/* exam dates */
+.ed-src { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px 18px; }
+.ed-src > div { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; flex: 1 1 320px; }
+.ed-src .ic { width: 18px; height: 18px; color: var(--accent); }
+.ed-src.empty-src > div { display: block; }
+.ed-src.empty-src h2 { margin: 0 0 4px; }
+.upc li .date small { display: block; font-size: 11px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+.upc li.clash { background: var(--bad-soft); }
+.bad-txt { color: var(--bad); display: inline-flex; align-items: center; gap: 4px; }
+.bad-txt .ic { width: 14px; height: 14px; }
+.ed-all > summary { cursor: pointer; list-style: none; }
+.ed-all > summary::-webkit-details-marker { display: none; }
+.ed-all > summary h2::before { content: "▸ "; color: var(--muted); }
+.ed-all[open] > summary h2::before { content: "▾ "; }
+.ed-search { padding: 0 18px 10px; }
+.ed-search input { width: 100%; max-width: 420px; }
+.ed-all tr[hidden] { display: none; }
+.ed-chip { display: inline-flex; align-items: center; gap: 4px; }
+.ed-chip .ic { width: 13px; height: 13px; }
 /* right-click menu */
 .menu.ctx { min-width: 250px; max-width: 290px; }
 .menu .mhead { padding: 6px 10px 6px 12px; margin: 0 0 4px; font-weight: 750; font-size: 13.5px; line-height: 1.3; border-left: 4px solid var(--c, var(--line-2)); }
