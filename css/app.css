@@ -222,10 +222,15 @@ textarea { width: 100%; resize: vertical; font-family: var(--mono); font-size: 1
 .plan-bar { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
 .plan-bar .cpsum { font-weight: 700; }
 .plan-bar .issues { display: flex; flex-wrap: wrap; gap: 6px; }
+.plan-scroll { position: relative; }
+.plan-scroll::before, .plan-scroll::after { content: ""; position: absolute; top: 0; bottom: 6px; width: 30px; pointer-events: none; opacity: 0; transition: opacity .15s; z-index: 2; }
+.plan-scroll::before { left: 0; background: linear-gradient(to right, color-mix(in srgb, var(--ink) 18%, transparent), transparent); }
+.plan-scroll::after { right: 0; background: linear-gradient(to left, color-mix(in srgb, var(--ink) 18%, transparent), transparent); }
+.plan-scroll.can-l::before, .plan-scroll.can-r::after { opacity: 1; }
 .plan-wrap { overflow-x: auto; padding-bottom: 6px; }
-.pgrid { display: grid; grid-template-columns: repeat(var(--n), minmax(158px, 1fr)) 60px; gap: 3px; min-width: calc(var(--n) * 161px + 63px); }
+.pgrid { display: grid; grid-template-columns: repeat(var(--n), minmax(138px, 1fr)) 60px; gap: 3px; min-width: calc(var(--n) * 141px + 63px); }
 .phead { position: relative; background: var(--head); padding: 9px 26px 8px; text-align: center; border-radius: 0; }
-.phead .t { font-weight: 750; font-size: 14px; }
+.phead .t { font-weight: 750; font-size: 14px; hyphens: manual; overflow-wrap: break-word; line-height: 1.25; }
 .phead .s { font-size: 11.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .phead .s b { font-weight: 700; }
 .phead .menu-btn { position: absolute; top: 6px; right: 3px; width: 26px; height: 26px; }
@@ -239,7 +244,7 @@ textarea { width: 100%; resize: vertical; font-family: var(--mono); font-size: 1
 .pcol.u { background: repeating-linear-gradient(135deg, var(--surface-2) 0 10px, var(--surface) 10px 20px); align-items: center; justify-content: center; padding: 20px 10px; text-align: center; color: var(--muted); font-size: 12.5px; font-weight: 600; }
 .pcol.a { background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
 .pcol.a .abroad-h { padding: 8px 6px 4px; text-align: center; font-size: 11.5px; color: var(--muted); font-weight: 600; }
-.pcol .add-abroad { margin: 6px; }
+.pcol .add-abroad { margin: 6px; white-space: normal; justify-content: center; text-align: center; line-height: 1.25; height: auto; padding-top: 6px; padding-bottom: 6px; }
 .pplus { display: flex; flex-direction: column; gap: 3px; }
 .pplus .phead { padding: 0; display: grid; place-items: center; min-height: 100%; }
 .pplus .plus-big { width: 100%; height: 100%; min-height: 54px; border: 0; background: transparent; font-size: 24px; font-weight: 500; color: var(--ink-2); cursor: pointer; }
@@ -409,6 +414,22 @@ td.acts { white-space: nowrap; text-align: right; width: 70px; }
 .menu .mi.danger .ic { color: var(--bad); }
 .menu hr { border: 0; border-top: 1px solid var(--line); margin: 6px 0; }
 .menu .mrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 10px; font-size: 12.5px; color: var(--muted); }
+/* right-click menu */
+.menu.ctx { min-width: 250px; max-width: 290px; }
+.menu .mhead { padding: 6px 10px 6px 12px; margin: 0 0 4px; font-weight: 750; font-size: 13.5px; line-height: 1.3; border-left: 4px solid var(--c, var(--line-2)); }
+.menu .mhead small { display: block; font-size: 11.5px; font-weight: 600; color: var(--muted); margin-top: 1px; }
+.menu .ctx-row { display: flex; flex-wrap: wrap; gap: 4px; padding: 2px 8px 6px; }
+.menu .ctx-row button { flex: 1 1 auto; min-width: 36px; font: inherit; font-size: 12.5px; font-weight: 650; padding: 6px 7px; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink-2); border-radius: 3px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.menu .ctx-row button:hover, .menu .ctx-row button:focus-visible { border-color: var(--accent); }
+.menu .ctx-row button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.menu .ctx-grades { display: grid; grid-template-columns: repeat(5, 1fr); }
+.menu .ctx-grades button.tone-good:not(.on) { color: var(--good); } .menu .ctx-grades button.tone-warn:not(.on) { color: var(--warn); } .menu .ctx-grades button.tone-bad:not(.on) { color: var(--bad); }
+.menu .ctx-sems button.abroad { border-style: dashed; }
+.menu .ctx-sems { display: grid; grid-template-columns: repeat(6, 1fr); }
+.menu .ctx-sems button.pool { grid-column: 1 / -1; }
+.menu .mi .sw { width: 13px; height: 13px; border-radius: 2px; background: var(--c); flex: none; margin: 0 2px; }
+.plan-legend .ctx-hint .ic { width: 15px; height: 15px; }
+@media (hover: none) { .plan-legend .ctx-hint { display: none; } }
 .menu .mlabel { padding: 6px 10px 2px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; }
 
 /* ---------------- modal ---------------- */
@@ -484,7 +505,7 @@ td.acts { white-space: nowrap; text-align: right; width: 70px; }
 @media print {
   @page { size: A4 landscape; margin: 10mm; }
   .top, .tabs, .head-actions, .card-f, .btn, .icon-btn, #toasts, .actions, .foot, .banner, .plan-bar, .chart-card, .menu-btn, .pplus, .bacts, .add-abroad { display: none !important; }
-  .pgrid .pplus { display: none !important; }
+  .pgrid .pplus, .ctx-hint, .plan-scroll::before, .plan-scroll::after { display: none !important; }
   .view { padding: 0; max-width: none; }
   .card { break-inside: avoid; }
   body { background: #fff; }
@@ -493,6 +514,6 @@ td.acts { white-space: nowrap; text-align: right; width: 70px; }
   .pgrid { grid-template-columns: repeat(var(--n), minmax(0, 1fr)) !important; min-width: 0 !important; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
-.pgrid > .band, .pgrid > .plan-legend { grid-column: 1 / -1; }
-.pgrid.exporting { grid-template-columns: repeat(var(--n), minmax(158px, 1fr)); min-width: calc(var(--n) * 161px); }
-.pgrid.exporting .pplus { display: none; }
+.exporting .pgrid { grid-template-columns: repeat(var(--n), minmax(138px, 1fr)); min-width: calc(var(--n) * 141px); }
+.exporting .pgrid .pplus, .exporting .ctx-hint, .exporting .plan-scroll::before, .exporting .plan-scroll::after { display: none; }
+.plan-print.exporting .plan-wrap { overflow: visible; }

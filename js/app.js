@@ -67,15 +67,15 @@
     setTarget: (el) => setTarget(el.dataset.v),
     fill: () => { Store.fillGaps({ B111: t("ph.B111"), B112: t("ph.B112"), B12: t("ph.B12"), B2: t("ph.B2") }); UI.toast(t("filled")); },
     flat: (el) => { const g = +el.dataset.g; Store.set(() => Store.mods().forEach((m) => { if (m.status === "open" && !m.ungraded) m.grade = g; })); UI.toast(t("flatDone", { g: fmtG(g) })); },
-    catalog: (el) => UI.openCatalog(el.dataset.area),
+    catalog: (el) => UI.openCatalog(el.dataset.area, "add", null, el.dataset.sem ? +el.dataset.sem : null),
     custom: (el) => {
       const a = el.dataset.area;
-      const m = Store.addModule({ a, g: a === "B112" ? "KI" : a === "B12" ? "SEM" : null, code: "", name: t("newModule"), cp: a === "B12" ? 3 : 5 });
+      const m = Store.addModule({ a, g: a === "B112" ? "KI" : a === "B12" ? "SEM" : null, code: "", name: t("newModule"), cp: a === "B12" ? 3 : 5, ...(el.dataset.sem ? { sem: +el.dataset.sem } : {}) });
       UI.openModule(m.id);
     },
     catAdd: (el) => {
       const c = CATALOG.find((x) => x.code === el.dataset.code && x.a === state.catalog.area); if (!c) return;
-      Store.addModule({ a: c.a, g: c.g, code: c.code, name: c.name, cp: c.cp });
+      Store.addModule({ a: c.a, g: c.g, code: c.code, name: c.name, cp: c.cp, ...(state.catalog.sem ? { sem: state.catalog.sem } : {}) });
       UI.toast(t("added", { name: c.name }), "good"); UI.renderCatalogList();
     },
     catOption: (el) => {
@@ -171,6 +171,7 @@
   $("#undo-btn").addEventListener("click", () => { if (Store.undoLast()) UI.toast(t("undone")); });
   window.addEventListener("hashchange", () => { view = route(); UI.closeModal(); UI.closeMenu(); render(); window.scrollTo(0, 0); });
   window.addEventListener("resize", UI.closeMenu);
+  window.addEventListener("scroll", () => { if (!$("#menu").hidden) UI.closeMenu(); }, { passive: true });
 
   Store.on(() => {
     render();

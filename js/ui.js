@@ -81,7 +81,7 @@ const UI = (() => {
   /* ---------------- popover menu ---------------- */
   function openMenu(anchor, html) {
     const m = $("#menu");
-    m.innerHTML = html; m.hidden = false;
+    m.className = "menu"; m.innerHTML = html; m.hidden = false;
     const r = anchor.getBoundingClientRect();
     const w = m.offsetWidth, h = m.offsetHeight;
     let left = Math.min(window.innerWidth - w - 8, Math.max(8, r.right - w));
@@ -90,7 +90,16 @@ const UI = (() => {
     m.style.left = left + "px"; m.style.top = top + "px";
     const f = m.querySelector("button, a"); if (f) f.focus();
   }
-  const closeMenu = () => { $("#menu").hidden = true; };
+  /* same menu, opened at a point (right-click / long-press) */
+  function openMenuAt(x, y, html, cls = "") {
+    const m = $("#menu");
+    m.className = "menu " + cls; m.innerHTML = html; m.hidden = false;
+    const w = m.offsetWidth, h = m.offsetHeight;
+    m.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, x)) + "px";
+    m.style.top = Math.max(8, y + h > window.innerHeight - 8 ? y - h : y) + "px";
+    const f = m.querySelector("button:not([disabled]), a"); if (f) f.focus({ preventScroll: true });
+  }
+  const closeMenu = () => { const m = $("#menu"); m.hidden = true; m.className = "menu"; };
 
   function toast(msg, tn = "") {
     const el = document.createElement("div");
@@ -108,7 +117,7 @@ const UI = (() => {
 
   return {
     $, $$, esc, t, L, fmt, fmtG, delta, stufe, tone, areaName, areaShort, groupName, today, daysUntil, dateShort, pill, big, gradeOptions,
-    AREA_ORDER, semInfo, semLabel, icon, LOGO, modal, closeModal, openMenu, closeMenu, toast, loadScript, state,
+    AREA_ORDER, semInfo, semLabel, icon, LOGO, modal, closeModal, openMenu, openMenuAt, closeMenu, toast, loadScript, state,
     views: {}, act: {}, change: {}, after: {},
   };
 })();

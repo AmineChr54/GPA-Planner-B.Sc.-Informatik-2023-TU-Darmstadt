@@ -12,7 +12,7 @@
   const areaRank = (a) => UI.AREA_ORDER.indexOf(a);
   /* German compounds in narrow columns: soft hyphens before common word parts,
      like the official overview ("Informations-management", "Rechner-organisation") */
-  const PARTS = /(management|sicherheit|konzepte|organisation|entwicklung|systeme|programmierung|technik|informatik|verarbeitung|lernen|netze|methoden|logik|barkeit|schaftliches|schaftliche|algorithmen|strukturen|intelligenz|spezifikation|grundlagen|analyse|kommunikation|praktikum|seminar|projekt)/gi;
+  const PARTS = /(management|sicherheit|konzepte|organisation|entwicklung|systeme|programmierung|technik|informatik|verarbeitung|lernen|netze|methoden|logik|barkeit|schaftliches|schaftliche|algorithmen|strukturen|intelligenz|spezifikation|grundlagen|analyse|kommunikation|praktikum|seminar|projekt|semester)/gi;
   const hy = (name) => esc(name).replace(/[A-Za-zÄÖÜäöüß]{13,}/g, (w) => w.replace(PARTS, (m, _p, i) => (i > 3 ? "\u00AD" + m : m)));
   const BAND_AREAS = ["B111", "B112", "B12", "B2"];
 
@@ -52,7 +52,7 @@
       const avg = Engine.gpa(c.ms, "proj", null, (m) => +m.sem === n).official;
       const title = si.t === "u" ? t("sem.urlaub") : t("semN", { n: si.fach });
       return `<div class="phead ${si.t}" data-sem="${n}">
-        <div class="t">${title}</div>
+        <div class="t">${hy(title)}</div>
         <div class="s">${si.term.label}${si.t === "a" ? " · " + t("sem.abroad") : ""}</div>
         ${si.t === "u" ? `<div class="s">${t("sem.notCounted")}</div>` : `<div class="s"><b>${fmt(cp, 0)} CP</b>${avg != null ? ` · <span title="${esc(t("sem.avgTitle"))}">Ø ${fmt(avg)}</span>` : ""}</div>`}
         <button class="icon-btn menu-btn" data-act="semMenu" data-sem="${n}" aria-label="${t("sem.menu")}">${icon("dots")}</button></div>`;
@@ -74,12 +74,16 @@
     const unscheduledCore = c.ms.filter((m) => !m.sem && ["A", "C"].includes(m.a) && Engine.counts(m));
     const bands = BAND_AREAS.map((a) => band(a, c)).join("")
       + (unscheduledCore.length ? `<div class="band" data-band="core" style="--c:var(--head)"><div class="bt">${t("band.core")}</div><div class="bchips">${unscheduledCore.map(chip).join("")}</div></div>` : "");
-    const legend = `<div class="plan-legend" style="grid-column:1/-1">
+    const legend = `<div class="plan-legend">
       <span class="lg"><sup>*</sup> ${t("legend.sl")}</span>
       <span class="lg"><span class="lg-solid"></span>${t("legend.done")}</span>
       <span class="lg"><span class="lg-open"></span>${t("legend.open")}</span>
-      <span class="lg">${t("legend.height")}</span></div>`;
-    return `<div class="plan-print"><div class="plan-wrap"><div class="pgrid" id="pgrid" style="--n:${N}">${heads}${plus}${bodies}${plusBody}${bands}${legend}</div></div></div>`;
+      <span class="lg">${t("legend.height")}</span>
+      <span class="lg ctx-hint">${icon("dots", "ic")}${t("ctx.hint")}</span></div>`;
+    // semesters scroll sideways; the area bands stay full width below so they never get cut off
+    return `<div class="plan-print" id="plan-export">
+      <div class="plan-scroll" id="plan-scroll"><div class="plan-wrap" id="plan-wrap"><div class="pgrid" id="pgrid" style="--n:${N}">${heads}${plus}${bodies}${plusBody}</div></div></div>
+      <div class="bands">${bands}</div>${legend}</div>`;
   }
 
   function chip(m) {
@@ -151,6 +155,7 @@
     lo = Math.max(1.0, lo); hi = Math.min(4.0, hi);
     const step = hi - lo > 1.5 ? 0.5 : hi - lo > 0.6 ? 0.2 : 0.1;
     const x = (i) => ml + (pts.length === 1 ? iw / 2 : (i / (pts.length - 1)) * iw);
+    const gap = iw / Math.max(1, pts.length - 1); // narrow screens: "3." instead of "3. Sem."
     const y = (v) => mt + ((v - lo) / (hi - lo)) * ih; // better grades at the top
     const ticks = []; for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) ticks.push(+v.toFixed(2));
     const doneIdx = pts.reduce((k, p, i) => (p.done ? i : k), -1);
@@ -166,7 +171,7 @@
         <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t("chart.aria", { list: pts.map((p) => p.fach + ": " + fmt(p.v)).join(", ") }))}">
           <g class="grid">${ticks.map((v) => `<line x1="${ml}" x2="${ml + iw}" y1="${y(v)}" y2="${y(v)}"/>`).join("")}</g>
           <g class="axis">${ticks.map((v) => `<text x="${ml - 8}" y="${y(v) + 4}" text-anchor="end">${fmt(v, step < 0.2 ? 1 : 1)}</text>`).join("")}
-            ${pts.map((p, i) => `<text x="${x(i)}" y="${H - 10}" text-anchor="middle">${t("semShortN", { n: p.fach })}</text>`).join("")}</g>
+            ${pts.map((p, i) => `<text x="${x(i)}" y="${H - 10}" text-anchor="middle">${gap < 56 ? p.fach + "." : t("semShortN", { n: p.fach })}</text>`).join("")}</g>
           <line class="target" x1="${ml}" x2="${ml + iw}" y1="${ty}" y2="${ty}"/>
           <text class="tlabel" x="${ml + iw + 8}" y="${ty + 4}">${t("k.target")} ${fmt(c.target)}</text>
           ${solid}${dashed}
@@ -220,7 +225,22 @@
   }
   function targetOf(el) { return el.dataset.band ? { band: el.dataset.band } : { sem: +el.dataset.sem, type: el.dataset.type }; }
 
+  /* sideways scroll: keep the position across re-renders, fade the edge that has more */
+  function edges() {
+    const wrap = $("#plan-wrap"), sc = $("#plan-scroll"); if (!wrap || !sc) return;
+    sc.classList.toggle("can-l", wrap.scrollLeft > 4);
+    sc.classList.toggle("can-r", wrap.scrollLeft + wrap.clientWidth < wrap.scrollWidth - 4);
+  }
+  window.addEventListener("resize", edges);
+
   UI.after.plan = () => {
+    const wrap = $("#plan-wrap");
+    if (wrap) {
+      wrap.scrollLeft = state.planScroll === "end" ? wrap.scrollWidth : state.planScroll || 0;
+      state.planScroll = wrap.scrollLeft;
+      wrap.addEventListener("scroll", () => { state.planScroll = wrap.scrollLeft; edges(); }, { passive: true });
+      edges();
+    }
     $$(".box[draggable], .bchip[draggable]").forEach((el) => {
       el.addEventListener("dragstart", (e) => { state.dragId = el.dataset.id; e.dataTransfer.setData("text/plain", el.dataset.id); e.dataTransfer.effectAllowed = "move"; el.classList.add("dragging"); });
       el.addEventListener("dragend", () => { el.classList.remove("dragging"); state.dragId = null; $$(".over").forEach((x) => x.classList.remove("over", "no-drop")); });
@@ -257,19 +277,81 @@
     }
   };
 
-  /* semester header menu */
-  UI.act.semMenu = (el) => {
-    const n = +el.dataset.sem, si = semInfo(n);
+  /* semester menu — from the ⋯ button or by right-clicking a header / column */
+  function semMenuHtml(n) {
+    const si = semInfo(n);
     const empty = !Store.get().scenarios.some((s) => s.modules.some((m) => +m.sem === n));
     const radio = (tp, label) => `<button class="mi" data-act="semType" data-sem="${n}" data-t="${tp}">${si.t === tp ? "●" : "○"} ${label}</button>`;
-    UI.openMenu(el, `<div class="mlabel">${esc(semLabel(n))}</div>${radio("n", t("sem.typeN"))}${radio("u", t("sem.typeU"))}${radio("a", t("sem.typeA"))}<hr>
+    const planHere = si.t === "u" ? ""
+      : si.t === "a" ? `<div class="mlabel">${t("ctx.planHere")}</div><button class="mi" data-act="ctxDo" data-do="addAbroad" data-sem="${n}">${icon("globe")}${t("abroad.add")}</button><hr>`
+      : `<div class="mlabel">${t("ctx.planHere")}</div>${BAND_AREAS.map((a) => `<button class="mi" data-act="ctxDo" data-do="catalog" data-area="${a}" data-sem="${n}"><span class="sw a-${a}"></span>${t("ctx.fromCat", { area: esc(areaShort(a)) })}</button>`).join("")}
+         <button class="mi" data-act="ctxDo" data-do="custom" data-area="B112" data-sem="${n}">${icon("plus")}${t("ctx.own")}</button><hr>`;
+    return `<div class="mhead">${esc(semLabel(n))}</div>${planHere}<div class="mlabel">${t("ctx.semType")}</div>${radio("n", t("sem.typeN"))}${radio("u", t("sem.typeU"))}${radio("a", t("sem.typeA"))}<hr>
       <button class="mi" data-act="semInsert" data-sem="${n}">${icon("plus")}${t("sem.insertBefore")}</button>
-      <button class="mi danger" data-act="semRemove" data-sem="${n}" ${empty ? "" : "disabled"}>${icon("trash")}${empty ? t("sem.remove") : t("sem.removeFull")}</button>`);
+      <button class="mi danger" data-act="semRemove" data-sem="${n}" ${empty ? "" : "disabled"}>${icon("trash")}${empty ? t("sem.remove") : t("sem.removeFull")}</button>`;
+  }
+  UI.act.semMenu = (el) => UI.openMenu(el, semMenuHtml(+el.dataset.sem));
+
+  /* module menu: status, grade, semester and the usual actions in one place */
+  function moduleMenu(m) {
+    const S = Store.get();
+    const elective = !["A", "C"].includes(m.a);
+    const cd = Engine.canDrop(Store.mods(), m);
+    const name = m.choice && m.choice.length ? m.choice.map((o) => o.name).join(" / ") : m.name;
+    const set = (k, v, on, label, cls = "", title = "") => `<button class="${on ? "on" : ""} ${cls}" data-act="ctxSet" data-id="${m.id}" data-k="${k}" data-v="${v}"${title ? ` title="${esc(title)}"` : ""}>${label}</button>`;
+    const status = ["open", "done", "off"].map((s) => set("status", s, m.status === s, t("status." + s))).join("");
+    const graded = Engine.counts(m) && !m.ungraded && m.status !== "off";
+    const grades = graded ? `<div class="mlabel">${m.status === "done" ? t("col.grade") : t("f.goalGrade")}</div>
+      <div class="ctx-row ctx-grades">${GRADES.map((g) => set("grade", g, Math.abs(+m.grade - g) < 1e-9, fmtG(g), "tone-" + tone(g))).join("")}</div>` : "";
+    const sems = S.sems.map((_, i) => i + 1).filter((n) => semInfo(n).t !== "u" && (semInfo(n).t !== "a" || m.abroad));
+    const move = `<div class="mlabel">${t("ctx.move")}</div><div class="ctx-row ctx-sems">${sems.map((n) => set("sem", n, +m.sem === n, semInfo(n).fach + ".", semInfo(n).t === "a" ? "abroad" : "", semLabel(n))).join("")}
+      ${elective ? set("sem", "", !m.sem, t("ctx.pool"), "pool") : ""}</div>`;
+    const doBtn = (d, ic, label, cls = "") => `<button class="mi ${cls}" data-act="ctxDo" data-do="${d}" data-id="${m.id}">${icon(ic)}${label}</button>`;
+    return `<div class="mhead a-${m.a}">${esc(name)}<small>${esc(areaShort(m.a))} · ${fmt(+m.cp, 0)} CP</small></div>
+      <div class="mlabel">${t("col.status")}</div><div class="ctx-row">${status}</div>${grades}${move}<hr>
+      ${doBtn("open", "dots", t("ctx.open"))}
+      ${elective && m.status === "open" && !m.choice ? doBtn("toChoice", "list", t("choice.convert")) : ""}
+      ${cd.ok && elective ? doBtn("drop", "x", t("btn.drop")) : ""}
+      ${m.fixed ? "" : doBtn("del", "trash", t("remove"), "danger")}`;
+  }
+  function bandMenu(a) {
+    return `<div class="mhead a-${a}">${esc(areaName(a))}</div>
+      <button class="mi" data-act="ctxDo" data-do="catalog" data-area="${a}">${icon("book")}${t("btn.catalog")}</button>
+      <button class="mi" data-act="ctxDo" data-do="newChoice" data-area="${a}">${icon("list")}${t("choice.new")}</button>
+      <button class="mi" data-act="ctxDo" data-do="custom" data-area="${a}">${icon("plus")}${t("btn.custom")}</button>`;
+  }
+  UI.act.ctxDo = (el, e) => { UI.closeMenu(); const f = UI.act[el.dataset.do]; if (f) f(el, e); };
+  UI.act.ctxSet = (el) => {
+    UI.closeMenu();
+    const { id, k, v } = el.dataset;
+    if (!Store.byId(id)) return;
+    if (k === "status") Store.updateModule(id, { status: v });
+    else if (k === "grade") Store.updateModule(id, { grade: +v });
+    else if (k === "sem") Store.updateModule(id, { sem: v ? +v : undefined });
   };
+  document.addEventListener("contextmenu", (e) => {
+    if (e.target.closest("#menu")) { e.preventDefault(); return; }
+    const view = document.getElementById("view");
+    if (!view || view.dataset.view !== "plan" || state.planMode !== "grid") return;
+    const mod = e.target.closest(".box[data-id], .bchip[data-id]");
+    const sem = e.target.closest(".phead[data-sem], .pcol[data-sem]");
+    const bandEl = e.target.closest(".band[data-band]");
+    const el = mod || sem || bandEl;
+    let html = "";
+    if (mod) { const m = Store.byId(mod.dataset.id); if (m) html = moduleMenu(m); }
+    else if (sem) html = semMenuHtml(+sem.dataset.sem);
+    else if (bandEl && bandEl.dataset.band !== "core") html = bandMenu(bandEl.dataset.band);
+    if (!html) { UI.closeMenu(); return; }
+    e.preventDefault();
+    // keyboard (Shift+F10 / menu key) has no pointer position: open at the element
+    let x = e.clientX, y = e.clientY;
+    if (!x && !y) { const r = el.getBoundingClientRect(); x = r.left + 8; y = r.bottom - 4; }
+    UI.openMenuAt(x, y, html, "ctx");
+  });
   UI.act.semType = (el) => { UI.closeMenu(); const err = Store.setSemType(+el.dataset.sem, el.dataset.t); if (err) UI.toast(t(err), "bad"); };
   UI.act.semInsert = (el) => { UI.closeMenu(); Store.insertSem(+el.dataset.sem); };
   UI.act.semRemove = (el) => { UI.closeMenu(); const err = Store.removeSem(+el.dataset.sem); if (err) UI.toast(t(err), "bad"); };
-  UI.act.addSem = (el) => { const n = Store.addSem(el.dataset.t); UI.toast(t("sem.added", { label: semLabel(n) })); };
+  UI.act.addSem = (el) => { state.planScroll = "end"; const n = Store.addSem(el.dataset.t); UI.toast(t("sem.added", { label: semLabel(n) })); };
   UI.act.planMode = (el) => { state.planMode = el.dataset.v; UI.render(); };
   UI.act.addAbroad = (el) => {
     const m = Store.addModule({ a: "B112", g: "KI", abroad: true, code: "", name: t("abroad.newName"), cp: 6, sem: +el.dataset.sem, status: "open", grade: 2.0 });
@@ -286,27 +368,29 @@
   UI.act.exportPng = async () => {
     UI.closeMenu();
     if (state.planMode !== "grid") { state.planMode = "grid"; UI.render(); }
-    const node = $("#pgrid"); if (!node) return;
+    const node = $("#plan-export"), grid = $("#pgrid"); if (!node || !grid) return;
     UI.toast(t("plan.pngWorking"));
     try {
       if (!window.htmlToImage) await UI.loadScript("vendor/html-to-image/html-to-image.js");
       const bg = getComputedStyle(document.body).backgroundColor;
-      // drop the "+" column by switching the grid to N columns (filtering cells out would shift the layout)
+      // drop the "+" column by switching the grid to N columns (filtering cells out would shift the layout),
+      // then widen the block to the full grid so the bands below match it
       node.classList.add("exporting");
+      node.style.width = grid.scrollWidth + "px";
       const opts = (skipFonts) => ({ pixelRatio: 2, backgroundColor: bg, skipFonts, width: node.scrollWidth, height: node.scrollHeight,
-        filter: (n) => !(n.classList && (n.classList.contains("menu-btn") || n.classList.contains("bacts") || n.classList.contains("add-abroad"))) });
+        filter: (n) => !(n.classList && ["menu-btn", "bacts", "add-abroad", "ctx-hint"].some((c) => n.classList.contains(c))) });
       let url;
       // file:// forbids reading stylesheets, so fonts can only be embedded when served over http(s)
       const local = location.protocol === "file:";
       try { url = await window.htmlToImage.toPng(node, opts(local)); } catch (e) { url = await window.htmlToImage.toPng(node, opts(true)); }
-      finally { node.classList.remove("exporting"); }
+      finally { node.classList.remove("exporting"); node.style.width = ""; }
       const a = document.createElement("a"); a.href = url; a.download = `studienplan-${new Date().toISOString().slice(0, 10)}.png`; a.click();
     } catch (e) { console.error(e); UI.toast(t("plan.pngFail"), "bad"); }
   };
   UI.act.exportPdf = () => {
     UI.closeMenu();
     if (state.planMode !== "grid") { state.planMode = "grid"; UI.render(); }
-    const node = $("#pgrid");
+    const node = $("#plan-export");
     document.body.classList.add("print-plan");
     const fit = Math.min(1, 1050 / node.scrollWidth);
     node.style.zoom = fit;

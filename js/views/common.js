@@ -95,8 +95,8 @@
   };
 
   /* ---------------- catalog picker (add, or add options to a choice block) ---------------- */
-  UI.openCatalog = (area, mode = "add", id = null) => {
-    state.catalog = { area, g: "", q: "", mode, id };
+  UI.openCatalog = (area, mode = "add", id = null, sem = null) => {
+    state.catalog = { area, g: "", q: "", mode, id, sem };
     state.modal = { type: "catalog" };
     const groups = GROUPS[area] || [];
     const target = id ? Store.byId(id) : null;
@@ -105,7 +105,7 @@
         ${groups.length ? `<div class="chips" id="cat-g"><button class="chip-btn on" data-g="">${t("all")}</button>${groups.map((g) => `<button class="chip-btn" data-g="${g.id}">${esc(g[UI.L()])}</button>`).join("")}</div>` : ""}</div>
       <div class="cat-list" id="cat-list"></div>
       <footer class="dlg-f"><span class="fine">${t("cat.note")}</span><span class="spacer"></span>
-        ${mode === "choice" ? `<button class="btn" data-act="backToModule" data-id="${id}">${t("cat.backTo", { name: esc(target ? target.name : "") })}</button>` : `<button class="btn" data-act="custom" data-area="${area}">${t("btn.custom")}</button>`}</footer>`;
+        ${mode === "choice" ? `<button class="btn" data-act="backToModule" data-id="${id}">${t("cat.backTo", { name: esc(target ? target.name : "") })}</button>` : `<button class="btn" data-act="custom" data-area="${area}"${sem ? ` data-sem="${sem}"` : ""}>${t("btn.custom")}</button>`}</footer>`;
     UI.modal(html, "dlg-catalog has-c a-" + area);
     UI.renderCatalogList();
   };
