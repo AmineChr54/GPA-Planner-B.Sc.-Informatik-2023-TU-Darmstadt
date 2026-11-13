@@ -189,9 +189,12 @@
   /* ---------------- view ---------------- */
   UI.views.plan = (c) => {
     const S = Store.get();
-    const rows = Engine.structure(c.ms);
+    // the bar counts only modules placed in a semester column; parked ones (bands below the grid) are shown apart
+    const placed = c.ms.filter((m) => m.sem);
+    const rows = Engine.structure(placed);
+    const parkedCp = c.ms.filter((m) => !m.sem && Engine.counts(m)).reduce((s, m) => s + (+m.cp || 0), 0);
     const issues = rows.filter((r) => r.st !== "ok").map((r) => pill(r.st === "low" ? "bad" : "warn", (r.id === "TOTAL" ? t("total") : areaShort(r.id)) + ": " + (r.st === "low" ? t("issue.low", { n: r.min - r.cp }) : t("issue.high", { n: r.cp - r.max }))));
-    const b12 = Engine.b12Rules(c.ms).rows.filter((r) => r.st !== "ok").map((r) => pill(r.st === "low" ? "bad" : "warn", t("issue.b12." + r.g.id + "." + r.st)));
+    const b12 = Engine.b12Rules(placed).rows.filter((r) => r.st !== "ok").map((r) => pill(r.st === "low" ? "bad" : "warn", t("issue.b12." + r.g.id + "." + r.st)));
     const y0 = new Date().getFullYear(); const years = []; for (let y = y0 - 8; y <= y0 + 1; y++) years.push(y);
     const total = rows.find((r) => r.id === "TOTAL").cp;
     return `
@@ -201,9 +204,9 @@
           <button class="btn" data-act="exportMenu">${icon("download")}${t("plan.export")}</button>
         </div></div>
       <div class="plan-bar">
-        <span class="cpsum">${t("plan.cp", { cp: fmt(total, 0) })}</span>
+        <span class="cpsum">${t("plan.cp", { cp: fmt(total, 0) })}${parkedCp ? ` <small class="fine">${t("plan.parked", { cp: fmt(parkedCp, 0) })}</small>` : ""}</span>
         <span class="issues">${issues.concat(b12).join("") || pill("good", t("plan.allOk"))}${Store.sc().auto && Store.sc().auto.impossible ? pill("bad", t("grade.impossible")) : ""}</span>
-        ${issues.length && rows.some((r) => r.st === "low") ? `<button class="btn sm" data-act="fill">${t("btn.fill")}</button>` : ""}
+        ${Engine.structure(c.ms).some((r) => r.st === "low") ? `<button class="btn sm" data-act="fill">${t("btn.fill")}</button>` : ""}
         <span class="spacer"></span>
         <label class="inline">${t("timeline.start")}
           <select data-act-change="startTerm" data-key="st-term"><option value="WS" ${S.start.term === "WS" ? "selected" : ""}>${t("term.WSshort")}</option><option value="SS" ${S.start.term === "SS" ? "selected" : ""}>${t("term.SSshort")}</option></select>

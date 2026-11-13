@@ -436,6 +436,7 @@ td.acts { white-space: nowrap; text-align: right; width: 70px; }
 .ed-all tr[hidden] { display: none; }
 .ed-chip { display: inline-flex; align-items: center; gap: 4px; }
 .ed-chip .ic { width: 13px; height: 13px; }
+.chip.est-chip { background: var(--warn-soft); color: var(--warn); cursor: help; }
 /* Notenspiegel */
 .ns { padding-top: 2px; }
 .ns-kpis b.bad-txt { color: var(--bad); }

@@ -176,6 +176,14 @@
   document.addEventListener("dragleave", (e) => { const d = e.target.closest && e.target.closest(".drop"); if (d) d.classList.remove("over"); });
   document.addEventListener("drop", (e) => { const d = e.target.closest && e.target.closest(".drop"); if (!d) return; e.preventDefault(); d.classList.remove("over"); const f = e.dataTransfer.files[0]; if (f) UI.handlePdf(f); });
 
+  // Better TUCaN extension: "Im Notenplaner öffnen" hands over the parsed Leistungsspiegel
+  // (same shape as Tucan.fromText) → the normal import review. Only same-window messages.
+  window.addEventListener("message", (e) => {
+    if (e.source !== window || !e.data || e.data.type !== "btc-notenplaner-import" || !e.data.result || !Array.isArray(e.data.result.modules)) return;
+    window.postMessage({ type: "btc-notenplaner-ack" }, "*");
+    UI.setPending(e.data.result);
+  });
+
   $("#undo-btn").addEventListener("click", () => { if (Store.undoLast()) UI.toast(t("undone")); });
   window.addEventListener("hashchange", () => { view = route(); UI.closeModal(); UI.closeMenu(); render(); window.scrollTo(0, 0); });
   window.addEventListener("resize", UI.closeMenu);
