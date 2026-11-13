@@ -202,6 +202,7 @@
       <div class="page-head"><div><h1>${t("plan.title")}</h1><p class="lede">${t("plan.lede")}</p></div>
         <div class="head-actions">
           <div class="seg" role="group" aria-label="${t("plan.mode")}"><button class="${state.planMode === "grid" ? "on" : ""}" data-act="planMode" data-v="grid">${icon("plan")} ${t("plan.grid")}</button><button class="${state.planMode === "list" ? "on" : ""}" data-act="planMode" data-v="list">${icon("list")} ${t("plan.list")}</button></div>
+          <a class="btn" href="#import" title="${esc(t("plan.importTitle"))}">${icon("upload")}${t("plan.import")}</a>
           <button class="btn" data-act="exportMenu">${icon("download")}${t("plan.export")}</button>
         </div></div>
       <div class="plan-bar">

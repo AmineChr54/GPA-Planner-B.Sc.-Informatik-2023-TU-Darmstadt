@@ -61,7 +61,7 @@ const I18N = (() => {
     "att.last": "letzter Versuch", "att.second": "Wiederholung", "att.opt0": "1. Versuch", "att.opt1": "2. Versuch (1 Fehlversuch)", "att.opt2": "3. Versuch – letzter",
 
     "plan.title": "Studienplan", "plan.lede": "Dein Studium auf einen Blick. Ziehe Module zwischen Semestern hin und her, klicke ein Modul an, um Note und Status zu ändern.",
-    "plan.mode": "Ansicht", "plan.grid": "Plan", "plan.list": "Liste", "plan.export": "Exportieren",
+    "plan.mode": "Ansicht", "plan.grid": "Plan", "plan.list": "Liste", "plan.import": "Leistungsspiegel importieren", "plan.importTitle": "Leistungsspiegel aus TUCaN einlesen (PDF oder Text) – du prüfst alles, bevor etwas übernommen wird", "plan.export": "Exportieren",
     "plan.cp": "{cp} von 180 CP", "plan.parked": "+ {cp} CP noch ohne Semester", "plan.allOk": "Struktur vollständig ✓",
     "plan.png": "Als Bild (PNG) speichern", "plan.pdf": "Als PDF drucken", "plan.pngWorking": "Bild wird erstellt …", "plan.pngFail": "Bild konnte nicht erstellt werden.",
     "issue.low": "{n} CP fehlen", "issue.high": "{n} CP zu viel",
@@ -256,7 +256,7 @@ const I18N = (() => {
     "att.last": "last attempt", "att.second": "retake", "att.opt0": "1st attempt", "att.opt1": "2nd attempt (1 fail)", "att.opt2": "3rd attempt – last",
 
     "plan.title": "Study plan", "plan.lede": "Your degree at a glance. Drag modules between semesters, click a module to change its grade and status.",
-    "plan.mode": "View", "plan.grid": "Plan", "plan.list": "List", "plan.export": "Export",
+    "plan.mode": "View", "plan.grid": "Plan", "plan.list": "List", "plan.import": "Import transcript", "plan.importTitle": "Read your TUCaN Leistungsspiegel (PDF or text) – you review everything before it is applied", "plan.export": "Export",
     "plan.cp": "{cp} of 180 CP", "plan.parked": "+ {cp} CP not in a semester yet", "plan.allOk": "Structure complete ✓",
     "plan.png": "Save as image (PNG)", "plan.pdf": "Print as PDF", "plan.pngWorking": "Creating image …", "plan.pngFail": "Could not create the image.",
     "issue.low": "{n} CP missing", "issue.high": "{n} CP too many",
