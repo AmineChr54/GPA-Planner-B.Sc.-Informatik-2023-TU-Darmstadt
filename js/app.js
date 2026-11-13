@@ -10,7 +10,7 @@
   if (S0.theme === "auto") S0.theme = "system";
   if (!S0.createdAt) S0.createdAt = new Date().toISOString();
 
-  const TABS = [["overview", "overview"], ["plan", "plan"], ["strategy", "strategy"], ["exams", "exams"]];
+  const TABS = [["overview", "overview"], ["plan", "plan"], ["suggest", "spark"], ["strategy", "strategy"], ["exams", "exams"]];
   const ALIAS = { modules: "plan", timeline: "plan", optimizer: "strategy", scenarios: "strategy" };
   const route = () => { let v = (location.hash || "#overview").slice(1); v = ALIAS[v] || v; return UI.views[v] ? v : "overview"; };
   let view = route();
