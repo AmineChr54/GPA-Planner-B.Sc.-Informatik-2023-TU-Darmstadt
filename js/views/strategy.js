@@ -98,12 +98,12 @@
     ${state.stratTab === "scen" ? scenarios() : optimizer(c)}`;
 
   UI.act.stratTab = (el) => { state.stratTab = el.dataset.v; UI.render(); };
-  UI.act.applyOpt = () => { const r = window.__opt; if (!r) return; Store.set(() => { for (const [m, g] of r.grades) { const x = Store.byId(m.id); if (x) x.grade = g; } }); UI.toast(t("opt.applied"), "good"); };
+  UI.act.applyOpt = () => { const r = window.__opt; if (!r) return; Store.set(() => { for (const [m, g] of r.grades) { const x = Store.byId(m.id); if (x) { x.grade = g; x.gradeSet = true; } } }); UI.toast(t("opt.applied"), "good"); };
   UI.act.optScenario = () => {
     const r = window.__opt; if (!r) return;
     const grades = new Map([...r.grades].map(([m, g]) => [m.id, g]));
     Store.newScenario(t("opt.scenName", { t: fmt(Store.sc().target) }));
-    Store.set(() => Store.mods().forEach((m) => { if (grades.has(m.id)) m.grade = grades.get(m.id); }));
+    Store.set(() => Store.mods().forEach((m) => { if (grades.has(m.id)) { m.grade = grades.get(m.id); m.gradeSet = true; } }));
     state.stratTab = "scen"; UI.toast(t("opt.saved"), "good");
   };
   UI.act.scenNew = (el) => { const sh = +el.dataset.shift; const base = Store.sc().name; state.stratTab = "scen"; Store.newScenario(sh < 0 ? t("scen.optName") : sh > 0 ? t("scen.pessName") : t("scen.copyName", { name: base }), sh); };

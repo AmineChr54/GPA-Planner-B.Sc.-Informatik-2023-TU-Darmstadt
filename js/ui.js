@@ -115,7 +115,15 @@ const UI = (() => {
     return new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej(new Error("load " + src)); document.head.appendChild(s); });
   }
 
+  /* grade select: planned modules get "auto" (= what the goal needs) as first choice */
+  function gradeSelectOptions(m) {
+    if (m.status !== "open") return gradeOptions(+m.grade);
+    const auto = !m.gradeSet;
+    return `<option value="auto" ${auto ? "selected" : ""}>${esc(t("grade.autoOpt", { g: fmtG(+(auto ? m.grade : (Store.sc().auto || { g: m.grade }).g)) }))}</option>` + gradeOptions(auto ? null : +m.grade);
+  }
+
   return {
+    gradeSelectOptions,
     $, $$, esc, t, L, fmt, fmtG, delta, stufe, tone, areaName, areaShort, groupName, today, daysUntil, dateShort, pill, big, gradeOptions,
     AREA_ORDER, semInfo, semLabel, icon, LOGO, modal, closeModal, openMenu, openMenuAt, closeMenu, toast, loadScript, state,
     views: {}, act: {}, change: {}, after: {},

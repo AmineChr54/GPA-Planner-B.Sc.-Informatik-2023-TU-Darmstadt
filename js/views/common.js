@@ -65,7 +65,7 @@
         <button class="icon-btn" data-act="close" aria-label="${t("close")}">${icon("x")}</button></header>
       <div class="form">
         <div class="lbl full">${t("col.status")}<div class="seg" role="group">${statuses.map((s) => `<button type="button" class="${m.status === s ? "on" : ""}" data-act="setStatus" data-id="${m.id}" data-v="${s}">${t("status." + s)}</button>`).join("")}</div></div>
-        ${m.ungraded ? `<p class="fine full">${t("ungradedNote")}</p>` : Engine.counts(m) ? `<label>${m.status === "done" ? t("col.grade") : t("f.goalGrade")}<select data-id="${m.id}" data-f="grade">${gradeOptions(+m.grade)}</select></label>` : ""}
+        ${m.ungraded ? `<p class="fine full">${t("ungradedNote")}</p>` : Engine.counts(m) ? `<label>${m.status === "done" ? t("col.grade") : t("f.goalGrade")}<select data-id="${m.id}" data-f="grade">${UI.gradeSelectOptions(m)}</select></label>` : ""}
         <label>${t("f.sem")}<select data-id="${m.id}" data-f="sem"><option value="">${t("unplanned")}</option>${sems.map((n) => `<option value="${n}" ${+m.sem === n ? "selected" : ""}>${esc(semLabel(n))}</option>`).join("")}</select></label>
         ${editable ? `<label class="full">${t("f.name")}<input type="text" value="${esc(m.name)}" data-id="${m.id}" data-f="name"></label>` : ""}
         ${editable && !m.abroad && !m.choice ? `<label>${t("f.code")}<input type="text" value="${esc(m.code || "")}" data-id="${m.id}" data-f="code"></label>` : ""}

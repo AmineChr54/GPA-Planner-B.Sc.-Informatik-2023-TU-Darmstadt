@@ -96,6 +96,15 @@ const Engine = (() => {
     for (let i = 0; i < 50; i++) { const mid = (lo + hi) / 2; f(mid) <= target ? (lo = mid) : (hi = mid); }
     return { g: lo };
   }
+  /* the default for planned grades the student hasn't set: the worst grade step that,
+     used for every unset planned module (set ones stay fixed), still meets the target */
+  function goalGrade(modules, target) {
+    const ok = (g) => { const r = gpa(modules, "proj", (m) => (m.gradeSet ? +m.grade : g)); return r.official != null && r.official <= target + EPS; };
+    let best = null;
+    for (const g of GRADES) if (ok(g)) best = g;
+    if (best == null) return { g: 1.0, impossible: true };
+    return { g: best, safe: best === 4.0 };
+  }
   // the worst valid grade that still meets the target when used everywhere
   function flatGradeFor(modules, target) {
     let best = null;
@@ -248,7 +257,7 @@ const Engine = (() => {
   return {
     truncate2, stufe, tone, gpa, cpUnder, nodeById, leaves, uniformGrade, flatGradeFor,
     optimize, flatEffort, overshoot, leverage, structure, b12Rules,
-    abwahlAreas, abwahlKey, abwahlUsed, canDrop, termOf, semesterOfDate, counts,
+    abwahlAreas, abwahlKey, abwahlUsed, canDrop, termOf, semesterOfDate, counts, goalGrade,
   };
 })();
 window.Engine = Engine;

@@ -16,7 +16,7 @@ const Store = (() => {
   function fresh(lang) {
     const s = { id: "s" + Date.now().toString(36), name: lang === "en" ? "My plan" : "Mein Plan", target: 2.5, modules: withIds(blankModules()) };
     return {
-      v: 2, lang: lang || "de", theme: "light",
+      v: 2, gradeV: 1, lang: lang || "de", theme: "light",
       start: guessStart(), active: s.id, scenarios: [s],
       sems: Array.from({ length: 6 }, () => ({ t: "n" })), // n = normal · u = Urlaubssemester · a = Auslandssemester
       oral: null, tucan: null, savedAt: null,
@@ -48,6 +48,11 @@ const Store = (() => {
       if (!d.scenarios.some((s) => s.id === d.active)) d.active = d.scenarios[0].id;
       d.start = d.start || guessStart();
       ensureSems(d);
+      // planned grades: a plain 2,0 was the old hard-coded default, so it becomes "auto"; anything else was chosen
+      if (d.gradeV !== 1) {
+        d.scenarios.forEach((s) => s.modules.forEach((m) => { if (m.status === "open" && !m.ungraded && m.gradeSet == null) m.gradeSet = m.grade != null && +m.grade !== 2.0; }));
+        d.gradeV = 1;
+      }
       if (d.onboarded == null) d.onboarded = true; // data from before the welcome screen existed
       return d;
     }
@@ -68,9 +73,10 @@ const Store = (() => {
   const listeners = [];
 
   function load() {
-    try { const raw = localStorage.getItem(KEY); if (raw) { const d = validate(JSON.parse(raw)); if (d) { S = d; return S; } } } catch (e) {}
+    try { const raw = localStorage.getItem(KEY); if (raw) { const d = validate(JSON.parse(raw)); if (d) { S = d; autoGrades(); return S; } } } catch (e) {}
     try { const raw = localStorage.getItem(LEGACY_KEY); if (raw) { const d = validate(JSON.parse(raw)); if (d) { S = d; S.migrated = true; S.onboarded = true; return S; } } } catch (e) {}
     S = fresh("de"); // German by default; DE/EN toggle in the sidebar
+    autoGrades();
     return S;
   }
   function save() {
@@ -78,7 +84,17 @@ const Store = (() => {
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
   }
   function snapshot() { undo.push(JSON.stringify(S)); if (undo.length > 60) undo.shift(); }
-  function emit() { save(); listeners.forEach((f) => f()); }
+  /* unset planned grades = the grade needed for that scenario's goal */
+  function autoGrades() {
+    if (typeof Engine === "undefined") return;
+    for (const s of S.scenarios) {
+      const open = s.modules.filter((m) => m.status === "open" && !m.ungraded && !m.gradeSet);
+      if (!open.length) { s.auto = null; continue; }
+      s.auto = Engine.goalGrade(s.modules, s.target);
+      open.forEach((m) => { m.grade = s.auto.g; });
+    }
+  }
+  function emit() { autoGrades(); save(); listeners.forEach((f) => f()); }
 
   /* mutate with undo + re-render */
   function commit(fn) { snapshot(); fn(S); S.dirty = true; emit(); }
@@ -108,8 +124,9 @@ const Store = (() => {
     commit(() => {
       const m = byId(id); if (!m) return;
       const wasFact = m.status === "done" || m.status === "dropped";
+      if ("grade" in patch && !("gradeSet" in patch)) patch.gradeSet = patch.grade != null;
       Object.assign(m, patch);
-      if (m.status !== "off" && m.status !== "dropped" && !m.ungraded && m.grade == null) m.grade = 2.0;
+      if (m.status !== "off" && m.status !== "dropped" && !m.ungraded && m.grade == null) m.grade = 4.0; // refilled by autoGrades unless set
       if ("grade" in patch && m.ph) {} // placeholder stays placeholder until renamed
       if ("name" in patch || "code" in patch) m.ph = false;
       propagate(m, wasFact);
@@ -130,7 +147,7 @@ const Store = (() => {
       if (shift) s.modules.forEach((m) => {
         if (m.status !== "open" || m.ungraded) return;
         const i = GRADES.indexOf(+m.grade);
-        if (i >= 0) m.grade = GRADES[Math.max(0, Math.min(GRADES.length - 1, i + shift))];
+        if (i >= 0) { m.grade = GRADES[Math.max(0, Math.min(GRADES.length - 1, i + shift))]; m.gradeSet = true; }
       });
       S.scenarios.push(s); S.active = s.id;
     });

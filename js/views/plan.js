@@ -23,7 +23,8 @@
   }
   function boxGrade(m) {
     if (m.status === "done") return `<span class="bx-g">✓ ${m.ungraded ? t("passedShort") : fmtG(+m.grade)}</span>`;
-    if (m.status === "open" && !m.ungraded) return `<span class="bx-g">${t("goalShort")} ${fmtG(+m.grade)}</span>`;
+    if (m.status === "open" && !m.ungraded) return m.gradeSet ? `<span class="bx-g">${t("goalShort")} ${fmtG(+m.grade)}</span>`
+      : `<span class="bx-g auto" title="${esc(t("grade.autoTitle", { t: fmt(Store.sc().target) }))}">≈ ${fmtG(+m.grade)}</span>`;
     if (m.status === "off") return `<span class="bx-g">${t("status.off")}</span>`;
     return "";
   }
@@ -65,11 +66,10 @@
         <button class="btn sm add-abroad" data-act="addAbroad" data-sem="${n}">${icon("plus")}${t("abroad.add")}</button></div>`;
       return `<div class="pcol" data-sem="${n}" data-type="n">${boxes}<div class="fill">${t("dropHere")}</div></div>`;
     }).join("");
-    const plus = `<div class="pplus"><div class="phead"><button class="plus-big" data-act="addSem" data-t="n" title="${t("sem.add")}" aria-label="${t("sem.add")}">+</button></div></div>`;
-    const plusBody = `<div class="pplus"><div class="pcol">
-        <button class="mini" data-act="addSem" data-t="n">${t("sem.addN")}</button>
-        <button class="mini" data-act="addSem" data-t="u">${t("sem.addU")}</button>
-        <button class="mini" data-act="addSem" data-t="a">${t("sem.addA")}</button></div></div>`;
+    const plus = `<div class="pplus"><div class="phead"><button class="plus-big" data-act="addSem" data-t="n" title="${t("sem.add")}" aria-label="${t("sem.add")}">${icon("plus")}</button></div></div>`;
+    // one icon + one short word per tile, so nothing has to hyphenate in a narrow column
+    const tile = (tp, ic, type) => `<button class="tile" data-act="addSem" data-t="${tp}" title="${esc(t("sem.addTitle", { type: t(type) }))}" aria-label="${esc(t("sem.addTitle", { type: t(type) }))}">${icon(ic)}<span>${t("sem.tile" + tp.toUpperCase())}</span></button>`;
+    const plusBody = `<div class="pplus"><div class="pcol">${tile("n", "plus", "sem.typeN")}${tile("u", "moon", "sem.typeU")}${tile("a", "globe", "sem.typeA")}</div></div>`;
     // the header row and the body row each get the trailing "+" column
     const unscheduledCore = c.ms.filter((m) => !m.sem && ["A", "C"].includes(m.a) && Engine.counts(m));
     const bands = BAND_AREAS.map((a) => band(a, c)).join("")
@@ -87,7 +87,7 @@
   }
 
   function chip(m) {
-    const g = m.status === "done" ? (m.ungraded ? "✓" : "✓ " + fmtG(+m.grade)) : m.ungraded ? "" : fmtG(+m.grade);
+    const g = m.status === "done" ? (m.ungraded ? "✓" : "✓ " + fmtG(+m.grade)) : m.ungraded ? "" : (m.gradeSet ? "" : "≈ ") + fmtG(+m.grade);
     const name = m.choice && m.choice.length ? m.choice.map((o) => o.name).join(` ${t("choice.or")} `) : m.name;
     return `<span class="bchip ${m.status}" draggable="true" data-id="${m.id}" tabindex="0" role="button">${m.choice ? `<small>${t("choice.tag")}</small>` : ""}${esc(name)} <small>${fmt(+m.cp, 0)} CP${g ? " · " + g : ""}</small></span>`;
   }
@@ -119,7 +119,7 @@
           <td class="num">${fmt(+m.cp, 0)}</td>
           <td><select class="sem" data-id="${m.id}" data-f="sem" data-key="ls-${m.id}" aria-label="${t("f.sem")}"><option value="">–</option>${sems.map((n) => `<option value="${n}" ${+m.sem === n ? "selected" : ""}>${semInfo(n).fach}.</option>`).join("")}</select></td>
           <td><select data-id="${m.id}" data-f="status" data-key="lst-${m.id}" aria-label="${t("col.status")}">${["open", "done", "off"].concat(m.status === "dropped" ? ["dropped"] : []).map((s) => `<option value="${s}" ${m.status === s ? "selected" : ""}>${t("status." + s)}</option>`).join("")}</select></td>
-          <td>${m.ungraded ? `<span class="muted">${t("passedShort")}</span>` : Engine.counts(m) ? `<select class="grade tone-${tone(+m.grade)}" data-id="${m.id}" data-f="grade" data-key="lg-${m.id}" aria-label="${t("col.grade")}">${gradeOptions(+m.grade)}</select>` : "–"}</td>
+          <td>${m.ungraded ? `<span class="muted">${t("passedShort")}</span>` : Engine.counts(m) ? `<select class="grade tone-${tone(+m.grade)}" data-id="${m.id}" data-f="grade" data-key="lg-${m.id}" aria-label="${t("col.grade")}">${UI.gradeSelectOptions(m)}</select>` : "–"}</td>
           <td class="acts"><button class="icon-btn" data-act="open" data-id="${m.id}" aria-label="${t("details")}">${icon("dots")}</button></td></tr>`;
       }).join("");
     }).join("");
@@ -202,7 +202,7 @@
         </div></div>
       <div class="plan-bar">
         <span class="cpsum">${t("plan.cp", { cp: fmt(total, 0) })}</span>
-        <span class="issues">${issues.concat(b12).join("") || pill("good", t("plan.allOk"))}</span>
+        <span class="issues">${issues.concat(b12).join("") || pill("good", t("plan.allOk"))}${Store.sc().auto && Store.sc().auto.impossible ? pill("bad", t("grade.impossible")) : ""}</span>
         ${issues.length && rows.some((r) => r.st === "low") ? `<button class="btn sm" data-act="fill">${t("btn.fill")}</button>` : ""}
         <span class="spacer"></span>
         <label class="inline">${t("timeline.start")}
@@ -302,7 +302,8 @@
     const status = ["open", "done", "off"].map((s) => set("status", s, m.status === s, t("status." + s))).join("");
     const graded = Engine.counts(m) && !m.ungraded && m.status !== "off";
     const grades = graded ? `<div class="mlabel">${m.status === "done" ? t("col.grade") : t("f.goalGrade")}</div>
-      <div class="ctx-row ctx-grades">${GRADES.map((g) => set("grade", g, Math.abs(+m.grade - g) < 1e-9, fmtG(g), "tone-" + tone(g))).join("")}</div>` : "";
+      <div class="ctx-row ctx-grades">${GRADES.map((g) => set("grade", g, m.gradeSet || m.status === "done" ? Math.abs(+m.grade - g) < 1e-9 : false, fmtG(g), "tone-" + tone(g))).join("")}
+        ${m.status === "open" ? set("grade", "auto", !m.gradeSet, `≈ ${t("grade.auto")}`, "auto", t("grade.autoTitle", { t: fmt(S.scenarios.find((s) => s.id === S.active).target) })) : ""}</div>` : "";
     const sems = S.sems.map((_, i) => i + 1).filter((n) => semInfo(n).t !== "u" && (semInfo(n).t !== "a" || m.abroad));
     const move = `<div class="mlabel">${t("ctx.move")}</div><div class="ctx-row ctx-sems">${sems.map((n) => set("sem", n, +m.sem === n, semInfo(n).fach + ".", semInfo(n).t === "a" ? "abroad" : "", semLabel(n))).join("")}
       ${elective ? set("sem", "", !m.sem, t("ctx.pool"), "pool") : ""}</div>`;
@@ -326,7 +327,7 @@
     const { id, k, v } = el.dataset;
     if (!Store.byId(id)) return;
     if (k === "status") Store.updateModule(id, { status: v });
-    else if (k === "grade") Store.updateModule(id, { grade: +v });
+    else if (k === "grade") Store.updateModule(id, v === "auto" ? { gradeSet: false } : { grade: +v });
     else if (k === "sem") Store.updateModule(id, { sem: v ? +v : undefined });
   };
   document.addEventListener("contextmenu", (e) => {

@@ -29,6 +29,12 @@
     sel.setAttribute("aria-label", t("scen.active"));
     $("#undo-btn").disabled = !Store.canUndo();
     $("#undo-btn").title = t("undo") + " (Ctrl+Z)";
+    // light/dark switch right in the bar; "System" stays in the ⚙ menu
+    const dark = S.theme === "dark" || (S.theme === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+    $("#theme-btn").innerHTML = icon(dark ? "sun" : "moon");
+    $("#theme-btn").title = t(dark ? "theme.toLight" : "theme.toDark");
+    $("#theme-btn").setAttribute("aria-label", $("#theme-btn").title);
+    $("#theme-btn").dataset.dark = dark ? "1" : "";
     $("#menu-btn").title = t("menu.title");
     $("#menu-btn").setAttribute("aria-label", t("menu.title"));
     $("#foot").innerHTML = `<span>${t("foot.unofficial")}</span><span>${t("foot.local")}</span><a href="#privacy">${t("privacy.title")}</a><a href="#rules">${t("nav.rules")}</a><span>${t("foot.credit")}</span>`;
@@ -63,10 +69,11 @@
   };
   Object.assign(UI.act, {
     close: () => UI.closeModal(),
+    toggleTheme: (el) => Store.set((S) => { S.theme = el.dataset.dark ? "light" : "dark"; }),
     open: (el) => UI.openModule(el.dataset.id),
     setTarget: (el) => setTarget(el.dataset.v),
     fill: () => { Store.fillGaps({ B111: t("ph.B111"), B112: t("ph.B112"), B12: t("ph.B12"), B2: t("ph.B2") }); UI.toast(t("filled")); },
-    flat: (el) => { const g = +el.dataset.g; Store.set(() => Store.mods().forEach((m) => { if (m.status === "open" && !m.ungraded) m.grade = g; })); UI.toast(t("flatDone", { g: fmtG(g) })); },
+    flat: (el) => { const g = +el.dataset.g; Store.set(() => Store.mods().forEach((m) => { if (m.status === "open" && !m.ungraded) { m.grade = g; m.gradeSet = true; } })); UI.toast(t("flatDone", { g: fmtG(g) })); },
     catalog: (el) => UI.openCatalog(el.dataset.area, "add", null, el.dataset.sem ? +el.dataset.sem : null),
     custom: (el) => {
       const a = el.dataset.area;
@@ -153,6 +160,7 @@
     if (!id || !f) return;
     let v = el.value;
     const patch = {};
+    if (f === "grade" && v === "auto") { Store.updateModule(id, { gradeSet: false }); return; }
     if (f === "grade" || f === "floor" || f === "attempts") v = +v;
     else if (f === "cp") v = Math.max(1, Math.min(30, Math.round(+v || 1)));
     else if (f === "sem") v = v ? +v : undefined;
