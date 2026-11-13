@@ -55,7 +55,7 @@
       return `<div class="phead ${si.t}" data-sem="${n}">
         <div class="t">${hy(title)}</div>
         <div class="s">${si.term.label}${si.t === "a" ? " · " + t("sem.abroad") : ""}</div>
-        ${si.t === "u" ? `<div class="s">${t("sem.notCounted")}</div>` : `<div class="s"><b>${fmt(cp, 0)} CP</b>${avg != null ? ` · <span title="${esc(t("sem.avgTitle"))}">Ø ${fmt(avg)}</span>` : ""}</div>`}
+        ${si.t === "u" ? `<div class="s">${t("sem.notCounted")}</div>` : `<div class="s"><b>${fmt(cp, 0)} CP</b>${avg != null ? ` · <span class="sens" title="${esc(t("sem.avgTitle"))}">Ø ${fmt(avg)}</span>` : ""}</div>`}
         <button class="icon-btn menu-btn" data-act="semMenu" data-sem="${n}" aria-label="${t("sem.menu")}">${icon("dots")}</button></div>`;
     }).join("");
     const bodies = cols.map((n) => {

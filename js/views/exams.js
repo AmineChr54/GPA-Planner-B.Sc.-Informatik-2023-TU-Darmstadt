@@ -53,7 +53,7 @@
     const fr = Math.round(st.failRate * 100);
     return `<span class="chip ns-chip ${fr >= 30 ? "risk" : ""}" title="${esc(t("ns.chipTitle", { n: st.n, exams: st.exams }))}">Ø ${fmt(st.avgPassed)} · ${fr} % ${t("ns.failWord")}</span>`;
   };
-  const att = (m) => ((m.attempts || 0) >= 2 ? pill("bad", t("att.last")) : m.attempts === 1 ? pill("warn", t("att.second")) : "");
+  const att = (m) => ((m.attempts || 0) >= 2 ? pill("bad sens", t("att.last")) : m.attempts === 1 ? pill("warn sens", t("att.second")) : "");
   const nameBtn = (m) => `<button class="linklike mname" data-act="open" data-id="${m.id}">${esc(m.name)}</button>`;
   /* the term the exam list is about: the schedule's, else today's */
   function currentTerm(ed) {

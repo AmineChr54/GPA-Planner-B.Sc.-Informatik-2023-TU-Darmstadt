@@ -29,6 +29,13 @@
     sel.setAttribute("aria-label", t("scen.active"));
     $("#undo-btn").disabled = !Store.canUndo();
     $("#undo-btn").title = t("undo") + " (Ctrl+Z)";
+    // privacy mode (like TUCaN Plus): grades and averages blur, hover shows them
+    const priv = document.documentElement.classList.contains("privacy");
+    $("#privacy-btn").innerHTML = icon(priv ? "eyeOff" : "eye");
+    $("#privacy-btn").classList.toggle("on", priv);
+    $("#privacy-btn").setAttribute("aria-pressed", String(priv));
+    $("#privacy-btn").title = t(priv ? "priv.onTitle" : "priv.offTitle");
+    $("#privacy-btn").setAttribute("aria-label", $("#privacy-btn").title);
     // light/dark switch right in the bar; "System" stays in the ⚙ menu
     const dark = S.theme === "dark" || (S.theme === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
     $("#theme-btn").innerHTML = icon(dark ? "sun" : "moon");
@@ -70,6 +77,12 @@
   Object.assign(UI.act, {
     close: () => UI.closeModal(),
     toggleTheme: (el) => Store.set((S) => { S.theme = el.dataset.dark ? "light" : "dark"; }),
+    togglePrivacy: () => {
+      const on = document.documentElement.classList.toggle("privacy");
+      try { localStorage.setItem("tud-notenplaner-privacy", on ? "1" : "0"); } catch (e) {}
+      render();
+      UI.toast(t(on ? "priv.onToast" : "priv.offToast"));
+    },
     open: (el) => UI.openModule(el.dataset.id),
     setTarget: (el) => setTarget(el.dataset.v),
     fill: () => { Store.fillGaps({ B111: t("ph.B111"), B112: t("ph.B112"), B12: t("ph.B12"), B2: t("ph.B2") }); UI.toast(t("filled")); },

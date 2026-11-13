@@ -650,3 +650,14 @@ td.acts { white-space: nowrap; text-align: right; width: 70px; }
 .btn.goal-off { color: var(--ink-2); }
 .btn.goal-off .ic { width: 16px; height: 16px; }
 .btn.goal-off:hover { color: var(--bad); border-color: var(--bad); }
+
+/* ---------- privacy mode (like TUCaN Plus): own grades, averages and attempts blur; hover/focus shows them.
+   The Notenspiegel stays readable – it is public data. ---------- */
+html.privacy :is(.sens, .hero-num, .hero-sub, .mini-stats .v, .scale-track .marker, .scale-keys b, .hero-note, .goal-card p, .goal-card .actions, .target-in,
+  .bx-g, .box .flag:not(.glob), .chart, select[data-f="grade"], select[data-f="attempts"],
+  .opt-sum, .tbl.opt td:nth-child(n+5), .cmp-t td.num, .preview td b, .preview .card-h .sub) { filter: blur(6px); transition: filter .15s; }
+html.privacy :is(.sens, .hero-num, .hero-sub, .mini-stats .v, .scale-track .marker, .scale-keys b, .hero-note, .goal-card p, .goal-card .actions, .target-in,
+  .bx-g, .box .flag:not(.glob), .chart, select[data-f="grade"], select[data-f="attempts"],
+  .opt-sum, .tbl.opt td:nth-child(n+5), .cmp-t td.num, .preview td b, .preview .card-h .sub):is(:hover, :focus, :focus-within) { filter: none; }
+#privacy-btn.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+@media print { html.privacy * { filter: none !important; } }

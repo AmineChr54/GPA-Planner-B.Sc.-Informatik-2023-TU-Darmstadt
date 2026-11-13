@@ -31,10 +31,10 @@
     for (const r of b12.rows) if (r.st !== "ok") out.push({ tone: r.st === "low" ? "bad" : "warn", icon: "!", html: t("hint.b12." + r.g.id + "." + r.st, { n: r.n, cp: r.cp }) });
     if (b12.untyped) out.push({ tone: "warn", icon: "?", html: t("hint.b12untyped", { n: b12.untyped }) });
     for (const m of c.ms.filter((m) => m.status === "open" && (m.attempts || 0) >= 2))
-      out.push({ tone: "bad", icon: "3", html: t("hint.last", { name: esc(m.name) }) + " " + (Store.get().oral ? t("hint.oralUsed") : t("hint.oralFree")) });
+      out.push({ tone: "bad", icon: "3", html: `<span class="sens">${t("hint.last", { name: esc(m.name) }) + " " + (Store.get().oral ? t("hint.oralUsed") : t("hint.oralFree"))}</span>` });
     for (const m of c.ms.filter((m) => m.status === "open" && m.attempts === 1)) {
       const cd = Engine.canDrop(c.ms, m);
-      out.push({ tone: "warn", icon: "2", html: t("hint.second", { name: esc(m.name) }) + (cd.ok ? " " + t("hint.canDrop") : "") });
+      out.push({ tone: "warn", icon: "2", html: `<span class="sens">${t("hint.second", { name: esc(m.name) }) + (cd.ok ? " " + t("hint.canDrop") : "")}</span>` });
     }
     const ph = c.ms.filter((m) => m.ph && Engine.counts(m)).length;
     if (ph) out.push({ tone: "info", icon: "i", html: t("hint.ph", { n: ph }), act: `<a class="btn sm" href="#plan">${t("nav.plan")}</a>` });
