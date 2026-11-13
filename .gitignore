@@ -18,4 +18,4 @@ Thumbs.db
 *.swp
 
 # ---- Notenspiegel tool: lists local screenshot paths ----
-review.csv
+review*.csv

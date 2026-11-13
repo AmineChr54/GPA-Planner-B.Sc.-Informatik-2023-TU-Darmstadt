@@ -1,0 +1,217 @@
+[
+ {
+  "_how": "photo of a monitor",
+  "code": "20-00-0005",
+  "name": "Algorithmen und Datenstrukturen",
+  "term": "WiSe 2019/20",
+  "date": "2020-07-18",
+  "counts": [
+   0,
+   0,
+   0,
+   1,
+   1,
+   5,
+   8,
+   9,
+   8,
+   4,
+   23
+  ],
+  "n": 59,
+  "avg": 3.934,
+  "missing": {
+   "sick": 5,
+   "absent": 3
+  },
+  "posted": "2020-07-24",
+  "_source": "736243063692722236"
+ },
+ {
+  "_how": "phone screenshot, cut off on the left",
+  "code": "04-10-0119",
+  "name": "Mathematik II für Informatiker",
+  "term": "WiSe 2021/22",
+  "date": "2022-03-17",
+  "counts": [
+   0,
+   0,
+   0,
+   1,
+   0,
+   0,
+   1,
+   1,
+   3,
+   11,
+   17
+  ],
+  "n": 34,
+  "avg": 4.365,
+  "missing": {
+   "absent": 2
+  },
+  "posted": "2022-04-14",
+  "_source": "964131929265954826"
+ },
+ {
+  "_how": "small screenshot",
+  "code": "20-00-0753",
+  "name": "Lernende Roboter: Integriertes Projekt - Teil 1",
+  "term": "SoSe 2023",
+  "date": null,
+  "counts": [
+   6,
+   5,
+   2,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "n": 13,
+  "avg": 1.223,
+  "missing": {},
+  "posted": "2023-10-31",
+  "_source": "1168860300095795300"
+ },
+ {
+  "_how": "OCR misread the counts",
+  "code": "20-00-0959",
+  "name": "Embedded System Hands-On 1: Entwurf und Realisierung von Hardware/Software-Systemen",
+  "term": "SoSe 2026",
+  "date": "2026-09-30",
+  "counts": [
+   14,
+   3,
+   5,
+   0,
+   3,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "n": 25,
+  "avg": 1.332,
+  "missing": {},
+  "posted": "2026-10-19",
+  "_source": "1561638097576394772"
+ },
+ {
+  "_how": "coloured digits",
+  "code": "20-00-0682",
+  "name": "Physikalisch-basierte Simulation und Animation",
+  "term": "SoSe 2021",
+  "date": null,
+  "counts": [
+   5,
+   1,
+   3,
+   1,
+   1,
+   3,
+   0,
+   1,
+   1,
+   1,
+   2
+  ],
+  "n": 19,
+  "avg": 2.358,
+  "missing": {
+   "sick": 1,
+   "absent": 2
+  },
+  "posted": "2021-10-04",
+  "_source": "894565009286385754"
+ },
+ {
+  "_how": "crop of the table only; module from the channel, term from the posting date",
+  "code": "20-00-0040",
+  "name": "Graphische Datenverarbeitung I",
+  "term": "WiSe 2022/23",
+  "date": null,
+  "counts": [
+   11,
+   14,
+   7,
+   5,
+   12,
+   6,
+   4,
+   9,
+   2,
+   2,
+   9
+  ],
+  "n": 81,
+  "avg": 2.432,
+  "missing": {},
+  "posted": "2023-03-27",
+  "termFromDate": true,
+  "_source": "1089869915302924389"
+ },
+ {
+  "_how": "dark-mode phone screenshot",
+  "code": "04-10-0118",
+  "name": "Mathematik I für Informatik",
+  "term": "SoSe 2023",
+  "date": "2023-09-07",
+  "counts": [
+   0,
+   1,
+   0,
+   1,
+   2,
+   5,
+   3,
+   7,
+   7,
+   3,
+   10
+  ],
+  "n": 39,
+  "avg": 3.626,
+  "missing": {
+   "sick": 16,
+   "absent": 13
+  },
+  "posted": "2023-09-14",
+  "_source": "1151838559670636544"
+ },
+ {
+  "_how": "small, blurry screenshot",
+  "code": "18-su-2010",
+  "name": "Software-Engineering - Wartung und Qualitätssicherung",
+  "term": "SoSe 2024",
+  "date": "2024-07-29",
+  "counts": [
+   28,
+   29,
+   21,
+   30,
+   33,
+   19,
+   23,
+   7,
+   9,
+   0,
+   7
+  ],
+  "n": 206,
+  "avg": 2.18,
+  "missing": {
+   "sick": 3,
+   "absent": 4
+  },
+  "posted": "2024-08-08",
+  "_source": "1270995388987478068"
+ }
+]

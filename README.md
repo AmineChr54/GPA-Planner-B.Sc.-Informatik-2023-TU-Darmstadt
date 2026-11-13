@@ -82,13 +82,26 @@ legacy/gpa.html            the original single-file planner, unchanged
 
 ### Notenspiegel screenshots → statistics
 
-```
-python tools/notenspiegel/extract.py path/to/screenshots/ --out js/gradestats.js
-```
+The screenshots come from the pinned messages of the student Discord servers (tud_geekhub, TU Master Informatik):
 
-Needs [Tesseract](https://github.com/UB-Mannheim/tesseract/wiki) (Windows: `winget install UB-Mannheim.TesseractOCR`), nothing else.
-Each screenshot is OCR'd and only kept if its counts add up to *Vorliegende Ergebnisse* and the recomputed average
-matches *Durchschnitt*; everything else lands in `js/review.csv` to fix by hand. Re-running merges and skips duplicates.
+1. Open Discord in the browser (discord.com/app), F12 → Console, paste `tools/notenspiegel/collect_pins.js`.
+   Click through the module channels, open each channel's pins and scroll to the end, then **Save list**.
+2. `python tools/notenspiegel/discord_pins.py --from-list notenspiegel-urls.json` — downloads the images to
+   `private/` (git-ignored) right away; Discord's links expire after about a day.
+   (With a bot that a server admin has added, `discord_pins.py <server-id>` fetches all pins without the browser.)
+3. `python tools/notenspiegel/extract.py private/notenspiegel-discord --out js/gradestats.js`
+
+Needs [Tesseract](https://github.com/UB-Mannheim/tesseract/wiki) (Windows: `winget install UB-Mannheim.TesseractOCR`) and Pillow.
+Each screenshot is OCR'd (page first, then cell by cell for garbled tables) and only kept if its counts add up to
+*Vorliegende Ergebnisse* and the recomputed average matches *Durchschnitt*; everything else lands in `js/review.csv`.
+Re-running merges and skips duplicates; when a Notenspiegel was posted before and after the Klausureinsicht, the
+version posted last wins.
+
+- `channels.csv` — Discord channel → module, for screenshots cropped below the title. The term then comes from the
+  exam date (Oct–Apr = WiSe, May–Sep = SoSe), or from the posting date if even that is cut off; such entries are
+  marked `termFromDate`.
+- `manual.json` — screenshots read by hand (photos of a monitor, blurry crops); checked against the same two rules.
+
 Only the numbers are stored — no names or messages. The data powers the module dialog, catalog chips, and the
 "good grades" option and popularity ranking in *Vorschläge*.
 
