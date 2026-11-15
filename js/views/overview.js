@@ -78,6 +78,11 @@
       const d = daysUntil(ex.date);
       return `<li class="exam ${d <= 7 ? "bad" : ""}"><span class="tic">${dateShort(ex.date)}</span><span class="txt"><b>${esc(m.name)}</b> · ${d === 0 ? t("today") : d === 1 ? t("tomorrow") : t("inDays", { n: d })}${(m.attempts || 0) >= 2 ? " " + pill("bad sens", t("att.last")) : ""}</span></li>`;
     }).concat(hs.slice(0, 6).map((h) => `<li class="${h.tone}"><span class="tic">${h.icon}</span><span class="txt">${h.html}</span>${h.act || ""}</li>`));
+    // calendar deadlines (quizzes, Abgaben) due within the next 3 days
+    const dueSoon = Store.studyPlans().filter((p) => p.type === "deadline" && !p.done && daysUntil(p.startDate) >= 0 && daysUntil(p.startDate) <= 3)
+      .sort((a, b) => a.startDate.localeCompare(b.startDate))
+      .map((p) => { const d = daysUntil(p.startDate); return `<li class="exam bad"><span class="tic">${dateShort(p.startDate)}</span><span class="txt">⏰ <b>${esc(p.title)}</b> · ${d === 0 ? t("today") : d === 1 ? t("tomorrow") : t("inDays", { n: d })}</span></li>`; });
+    todo.unshift(...dueSoon);
     const T = S.tucan;
     return `
       <div class="page-head"><div><h1>${t("overview.title")}</h1><p class="lede">${t(S.goalOn ? "overview.lede" : "overview.ledeNoGoal")}</p></div></div>

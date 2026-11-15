@@ -823,3 +823,14 @@ input[type=number]::-webkit-outer-spin-button, input[type=number]::-webkit-inner
 
 
 [hidden] { display: none !important; }
+
+/* week view + drag handles */
+.cal-week-mode .cal-week-row { min-height: 420px; }
+.cal-week-mode .cal-day-cell { min-height: 380px; }
+.cal-span-bar { position: relative; }
+.cal-rz { position: absolute; top: 0; bottom: 0; width: 8px; cursor: ew-resize; }
+.cal-rz-l { left: 0; }
+.cal-rz-r { right: 0; }
+.cal-rz:hover { background: rgba(0,0,0,.15); }
+body.cal-resizing, body.cal-resizing * { cursor: ew-resize !important; user-select: none; }
+.cal-event-item[draggable=true], .cal-sticky-note[draggable=true] { cursor: grab; }

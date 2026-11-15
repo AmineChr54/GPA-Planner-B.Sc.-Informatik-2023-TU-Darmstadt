@@ -15,7 +15,7 @@
     state.calYear = now.getFullYear();
     state.calMonth = now.getMonth(); // 0-indexed
   }
-  const drag = { on: false, start: null, end: null, bound: false };
+  const drag = { on: false, start: null, end: null, bound: false, move: null, rz: null };
   state.calSelectedDay = new Date().toISOString().slice(0, 10);
 
   const MONTH_NAMES_DE = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
@@ -78,6 +78,27 @@
       weeks.push({ weekNum, days });
     }
     return weeks;
+  }
+
+  const addDays = (iso, n) => { const d = new Date(iso + "T00:00:00"); d.setDate(d.getDate() + n); return toIso(d); };
+  const daysBetween = (a, b) => Math.round((Date.parse(b + "T00:00:00") - Date.parse(a + "T00:00:00")) / 864e5);
+
+  /* one week (Mon-Sun) containing the given day, same day objects as the month matrix */
+  function buildWeek(iso) {
+    const d0 = new Date(iso + "T00:00:00");
+    const start = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate() - ((d0.getDay() + 6) % 7));
+    const todayIso = toIso(new Date());
+    const cur = new Date(start), days = [], weekNum = getIsoWeek(cur);
+    for (let d = 0; d < 7; d++) {
+      const i = toIso(cur);
+      days.push({
+        date: new Date(cur), iso: i, dayNum: cur.getDate(), inMonth: true, isToday: i === todayIso, weekNum, dayIdx: d, weekIdx: 0, isBreak: false,
+        boundary: typeof AcademicCalendar !== "undefined" ? AcademicCalendar.getBoundaryEvent(i) : null,
+        holiday: null,
+      });
+      cur.setDate(cur.getDate() + 1);
+    }
+    return [{ weekNum, days }];
   }
 
   /* Color presets for study plans */
@@ -166,6 +187,7 @@
           ev,
           startCol,
           spanCols: endCol - startCol + 1,
+          segStart,
           isStart: ev.startDate === segStart,
           isEnd: ev.endDate === segEnd,
         });
@@ -206,7 +228,11 @@
   /* Render the calendar header with navigation and view toggle */
   function renderCalendarHeader(c) {
     const y = state.calYear, m = state.calMonth;
-    const title = monthTitle(y, m);
+    let title = monthTitle(y, m);
+    if (state.calView === "week") {
+      const wk = buildWeek(state.calSelectedDay)[0];
+      title = `KW ${wk.weekNum} · ${dateShort(wk.days[0].iso)} – ${dateShort(wk.days[6].iso)}`;
+    }
     const viewMode = state.examsViewMode || "calendar";
 
     return `
@@ -220,6 +246,10 @@
           <h2 class="cal-month-title">${esc(title)}</h2>
         </div>
         <div class="cal-top-actions">
+          <div class="seg-ctrl" role="tablist">
+            <button class="seg-btn ${state.calView !== "week" ? "active" : ""}" data-act="setCalView" data-v="month">${UI.L() === "en" ? "Month" : "Monat"}</button>
+            <button class="seg-btn ${state.calView === "week" ? "active" : ""}" data-act="setCalView" data-v="week">${UI.L() === "en" ? "Week" : "Woche"}</button>
+          </div>
           <button class="btn sm primary" data-act="openAddPlanModal">${icon("plus")}${t("cal.addEvent") || "+ Neuer Lernplan"}</button>
           <div class="seg-ctrl" role="tablist">
             <button class="seg-btn ${viewMode === "calendar" ? "active" : ""}" data-act="setExamsMode" data-v="calendar" title="Kalender">📅 ${t("cal.tabCal") || "Kalender"}</button>
@@ -255,7 +285,7 @@
       }
       if (ev.type === "note") {
         return `
-          <div class="cal-sticky-note" style="--note-bg:${ev.color || "#fef08a"}" data-act="editStudyPlan" data-id="${ev.id}" title="${esc(ev.title)}">
+          <div class="cal-sticky-note" draggable="true" data-segoff="0" style="--note-bg:${ev.color || "#fef08a"}" data-act="editStudyPlan" data-id="${ev.id}" title="${esc(ev.title)}">
             <span class="cal-note-pin">📌</span>
             <span class="cal-note-txt">${esc(ev.title)}</span>
           </div>`;
@@ -266,7 +296,7 @@
       const doneCls = ev.done ? "is-done" : "";
       const timeStr = !ev.allDay && ev.startTime ? `${ev.startTime} ` : "";
       return `
-        <div class="cal-event-item ${isDl ? "cal-deadline-item" : "cal-session-item"} ${doneCls}" style="--ev-c:${ev.color || "#fed7aa"}" data-act="editStudyPlan" data-id="${ev.id}" title="${esc(ev.title)}">
+        <div class="cal-event-item ${isDl ? "cal-deadline-item" : "cal-session-item"} ${doneCls}" draggable="true" data-segoff="0" style="--ev-c:${ev.color || "#fed7aa"}" data-act="editStudyPlan" data-id="${ev.id}" title="${esc(ev.title)}">
           <span class="cal-ev-icon">${iconMark}</span>
           <span class="cal-ev-title"><b>${timeStr}</b>${esc(ev.title)}</span>
         </div>`;
@@ -291,14 +321,15 @@
     const isAcad = ev.type === "academic-span" || ev.type === "academic-break";
     const bg = ev.color || "#fed7aa";
     const iconMark = ev.subType === "holiday" ? "🎄 " : ev.subType === "semesterBreak" ? "🏖️ " : "📚 ";
-    const clickAct = isAcad ? "" : `data-act="editStudyPlan" data-id="${ev.id}"`;
+    const clickAct = isAcad ? "" : `data-act="editStudyPlan" data-id="${ev.id}" draggable="true" data-segoff="${daysBetween(ev.startDate, span.segStart)}" data-span="${spanCols}"`;
+    const rz = isAcad ? "" : `${isStart ? `<span class="cal-rz cal-rz-l" data-rz="l" data-id="${ev.id}"></span>` : ""}${isEnd ? `<span class="cal-rz cal-rz-r" data-rz="r" data-id="${ev.id}"></span>` : ""}`;
 
     return `
       <div class="cal-span-bar track-${track} ${isStart ? "start-edge" : ""} ${isEnd ? "end-edge" : ""} ${isAcad ? "is-acad" : ""}"
            style="grid-column:${startCol + 1} / span ${spanCols}; grid-row:${track + 1}; --bar-bg:${bg}"
            ${clickAct}
            title="${esc(ev.title)} (${dateShort(ev.startDate)} – ${dateShort(ev.endDate)})">
-        <span class="cal-bar-txt">${iconMark}<b>${esc(ev.title)}</b></span>
+        <span class="cal-bar-txt">${iconMark}<b>${esc(ev.title)}</b></span>${rz}
       </div>
     `;
   }
@@ -306,7 +337,8 @@
   /* Main Calendar View HTML */
   UI.renderCalendar = (c) => {
     const y = state.calYear, m = state.calMonth;
-    const weeks = buildMonthMatrix(y, m);
+    const isWeek = state.calView === "week";
+    const weeks = isWeek ? buildWeek(state.calSelectedDay) : buildMonthMatrix(y, m);
     const gridStartIso = weeks[0].days[0].iso;
     const gridEndIso = weeks[weeks.length - 1].days[6].iso;
 
@@ -365,7 +397,7 @@
     `;
 
     return `
-      <div class="card flush cal-card">
+      <div class="card flush cal-card ${isWeek ? "cal-week-mode" : ""}">
         ${renderCalendarHeader(c)}
         <div class="cal-grid-header">
           <div class="cal-wn-head">KW</div>
@@ -419,6 +451,17 @@
     if (!drag.bound) {
       drag.bound = true;
       document.addEventListener("mouseup", () => {
+        if (drag.rz) {
+          const rz = drag.rz; drag.rz = null;
+          document.body.classList.remove("cal-resizing");
+          clearDragHighlight();
+          const p = Store.studyPlans().find((x) => x.id === rz.id);
+          if (p && rz.over) {
+            const patch = rz.edge === "l" ? { startDate: rz.over > p.endDate ? p.endDate : rz.over } : { endDate: rz.over < p.startDate ? p.startDate : rz.over };
+            Store.updateStudyPlan(p.id, patch);
+          }
+          return;
+        }
         if (!drag.on) return;
         drag.on = false;
         clearDragHighlight();
@@ -430,6 +473,62 @@
         UI.openAddStudyPlanModal({ startDate: min, endDate: max }); // single click = one day, drag = range
       });
     }
+
+    /* day cell under the pointer, also when the pointer is over a spanning bar */
+    const cellAt = (e) => document.elementsFromPoint(e.clientX, e.clientY).find((x) => x.classList && x.classList.contains("cal-day-cell") && x.dataset.iso) || null;
+    const planOf = (id) => Store.studyPlans().find((x) => x.id === id);
+
+    // move: drag an entry onto another day (keeps its length)
+    wrapper.addEventListener("dragstart", (e) => {
+      const el = e.target.closest && e.target.closest("[draggable=true][data-id]");
+      if (!el) return;
+      const p = planOf(el.dataset.id);
+      if (!p) return;
+      let off = +el.dataset.segoff || 0;
+      const n = +el.dataset.span || 1;
+      if (n > 1) { // which day of the bar was grabbed
+        const r = el.getBoundingClientRect();
+        off += Math.min(n - 1, Math.max(0, Math.floor((e.clientX - r.left) / (r.width / n))));
+      }
+      drag.move = { id: p.id, off };
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", p.id);
+    });
+    wrapper.addEventListener("dragover", (e) => {
+      if (!drag.move) return;
+      const cell = cellAt(e);
+      if (!cell) return;
+      e.preventDefault();
+      applyDragHighlight(cell.dataset.iso, cell.dataset.iso);
+    });
+    wrapper.addEventListener("drop", (e) => {
+      if (!drag.move) return;
+      e.preventDefault();
+      const cell = cellAt(e), mv = drag.move;
+      drag.move = null;
+      clearDragHighlight();
+      const p = planOf(mv.id);
+      if (!cell || !p) return;
+      const start = addDays(cell.dataset.iso, -mv.off), len = daysBetween(p.startDate, p.endDate);
+      if (start === p.startDate) return;
+      Store.updateStudyPlan(p.id, { startDate: start, endDate: addDays(start, len) });
+      UI.toast(t("cal.updated") || "Eintrag aktualisiert", "good");
+    });
+    wrapper.addEventListener("dragend", () => { drag.move = null; clearDragHighlight(); });
+
+    // resize: pull the left/right end of a bar to another day
+    wrapper.addEventListener("mousedown", (e) => {
+      const h = e.target.closest && e.target.closest("[data-rz]");
+      if (!h || e.button !== 0) return;
+      e.preventDefault(); e.stopPropagation();
+      drag.rz = { id: h.dataset.id, edge: h.dataset.rz, over: null };
+      document.body.classList.add("cal-resizing");
+    }, true);
+    wrapper.addEventListener("mousemove", (e) => {
+      if (!drag.rz) return;
+      const cell = cellAt(e);
+      if (cell) { drag.rz.over = cell.dataset.iso; applyDragHighlight(cell.dataset.iso, cell.dataset.iso); }
+    });
 
     // Cell click (for mobile or single tap)
     wrapper.addEventListener("click", (e) => {
@@ -444,23 +543,40 @@
     });
   };
 
+  function shiftWeek(n) {
+    state.calSelectedDay = addDays(state.calSelectedDay, n);
+    const d = new Date(state.calSelectedDay + "T00:00:00");
+    state.calYear = d.getFullYear(); state.calMonth = d.getMonth();
+    UI.render();
+  }
+
   /* Calendar Actions */
   Object.assign(UI.act, {
+    setCalView: (el) => {
+      state.calView = el.dataset.v;
+      const d = new Date(state.calSelectedDay + "T00:00:00");
+      if (state.calView === "week" && !(d.getFullYear() === state.calYear && d.getMonth() === state.calMonth)) state.calSelectedDay = toIso(new Date(state.calYear, state.calMonth, 1));
+      UI.render();
+    },
     calPrevMonth: () => {
+      if (state.calView === "week") return shiftWeek(-7);
       state.calMonth--;
       if (state.calMonth < 0) { state.calMonth = 11; state.calYear--; }
       UI.render();
     },
     calNextMonth: () => {
+      if (state.calView === "week") return shiftWeek(7);
       state.calMonth++;
       if (state.calMonth > 11) { state.calMonth = 0; state.calYear++; }
       UI.render();
     },
     calPrevYear: () => {
+      if (state.calView === "week") return shiftWeek(-28);
       state.calYear--;
       UI.render();
     },
     calNextYear: () => {
+      if (state.calView === "week") return shiftWeek(28);
       state.calYear++;
       UI.render();
     },
