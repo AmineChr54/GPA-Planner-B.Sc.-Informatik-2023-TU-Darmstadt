@@ -76,7 +76,12 @@
   UI.act.export = () => {
     UI.closeMenu();
     const S = Store.get();
-    const blob = new Blob([JSON.stringify(S, null, 2)], { type: "application/json" });
+    // everything in the store (modules, grades, scenarios, study plans, tracker, free topics, settings) plus
+    // a user-uploaded exam schedule, which lives in its own storage key
+    const ed = typeof ExamDates !== "undefined" ? ExamDates.get() : null;
+    const out = { ...S, exportedAt: new Date().toISOString() };
+    if (ed && ed.source !== "repo") out.examDates = ed;
+    const blob = new Blob([JSON.stringify(out, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob); a.download = `notenplaner-${new Date().toISOString().slice(0, 10)}.json`; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
@@ -85,7 +90,7 @@
   };
   UI.act.importJson = () => { UI.closeMenu(); (document.getElementById("json-file") || document.getElementById("json-file-menu")).click(); };
   UI.importJsonFile = (f) => {
-    f.text().then((txt) => { try { if (Store.replaceAll(JSON.parse(txt))) { Store.set((S) => { S.onboarded = true; }); UI.toast(t("backup.loaded"), "good"); } else UI.toast(t("backup.invalid"), "bad"); } catch { UI.toast(t("backup.invalid"), "bad"); } });
+    f.text().then((txt) => { try { const d = JSON.parse(txt); const ed = d && d.examDates; if (d) delete d.examDates; if (Store.replaceAll(d)) { if (ed && typeof ExamDates !== "undefined") ExamDates.restore(ed); Store.set((S) => { S.onboarded = true; }); UI.toast(t("backup.loaded"), "good"); } else UI.toast(t("backup.invalid"), "bad"); } catch { UI.toast(t("backup.invalid"), "bad"); } });
   };
 
   /* delete everything: confirm dialog that offers an export first */

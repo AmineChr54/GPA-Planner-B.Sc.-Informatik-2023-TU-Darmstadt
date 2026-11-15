@@ -15,8 +15,7 @@
     state.calYear = now.getFullYear();
     state.calMonth = now.getMonth(); // 0-indexed
   }
-  state.calDragStart = null;
-  state.calDragEnd = null;
+  const drag = { on: false, start: null, end: null, bound: false };
   state.calSelectedDay = new Date().toISOString().slice(0, 10);
 
   const MONTH_NAMES_DE = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
@@ -54,7 +53,9 @@
     const weeks = [];
     const cur = new Date(start);
 
+    const lastOfMonth = new Date(year, month + 1, 0);
     for (let w = 0; w < 6; w++) {
+      if (w > 0 && cur > lastOfMonth) break; // no trailing week made only of next-month days
       const days = [];
       const weekNum = getIsoWeek(cur);
       for (let d = 0; d < 7; d++) {
@@ -88,6 +89,11 @@
     { id: "rose", bg: "#fecdd3", border: "#f43f5e", text: "#881337", label: "Rosé" },
     { id: "amber", bg: "#fef08a", border: "#eab308", text: "#713f12", label: "Gelb/Bernstein" },
   ];
+
+  /* Titled dialog: UI.modal takes (html, cls), so wrap title + body in the standard dialog header */
+  UI.dialog = (title, body, cls = "") => {
+    UI.modal(`<header class="dlg-h"><h2>${esc(title)}</h2><button type="button" class="icon-btn" data-act="close" aria-label="${t("close")}">${icon("x")}</button></header><div class="dlg-b">${body}</div>`, cls);
+  };
 
   /* Collect all events for display */
   function collectEvents(c, startIso, endIso) {
@@ -232,20 +238,19 @@
 
     let boundaryHtml = "";
     if (boundary) {
-      const cls = boundary.type === "lectureStart" ? "bound-start" : "bound-end";
-      const iconTxt = boundary.type === "lectureStart" ? "🚀" : "🏁";
+      const cls = boundary.type === "lectureStart" ? "bound-start" : boundary.type === "lectureEnd" ? "bound-end" : "bound-break";
+      const iconTxt = boundary.type === "lectureStart" ? "🚀" : boundary.type === "lectureEnd" ? "🏁" : "";
       boundaryHtml = `<div class="cal-boundary-badge ${cls}" title="${esc(boundary.title)}">${iconTxt} ${esc(boundary.title)}</div>`;
     }
 
     const itemsHtml = singleEvents.map((ev) => {
       if (ev.type === "exam") {
-        const timeStr = ev.startTime ? `${ev.startTime}` : "";
         const areaCls = `a-${ev.a || "A"}`;
         const attStr = ev.attempts >= 2 ? ` <span class="cal-att-warn">(${ev.attempts}. Vers.)</span>` : "";
+        const timeStr = ev.startTime ? `<span class="cal-ev-time">${ev.startTime}</span>` : "";
         return `
           <div class="cal-event-item cal-exam-item ${areaCls}" data-act="openExamDetail" data-id="${ev.moduleId}" title="${esc(ev.title)}${ev.startTime ? ` (${ev.startTime})` : ""}">
-            <span class="cal-ev-dot" style="background:var(--${areaCls}, #2470ad)"></span>
-            <span class="cal-ev-title"><b>${timeStr ? timeStr + " " : ""}</b>${esc(ev.code || ev.title)}${attStr}</span>
+            <span class="cal-ev-title">${timeStr}${esc(ev.title)}${attStr}</span>
           </div>`;
       }
       if (ev.type === "note") {
@@ -303,7 +308,7 @@
     const y = state.calYear, m = state.calMonth;
     const weeks = buildMonthMatrix(y, m);
     const gridStartIso = weeks[0].days[0].iso;
-    const gridEndIso = weeks[5].days[6].iso;
+    const gridEndIso = weeks[weeks.length - 1].days[6].iso;
 
     const allEvents = collectEvents(c, gridStartIso, gridEndIso);
     const weekdays = UI.L() === "en" ? WEEKDAYS_EN : WEEKDAYS_DE;
@@ -330,9 +335,9 @@
       return `
         <div class="cal-week-row">
           <div class="cal-week-num" title="Kalenderwoche ${w.weekNum}">W${w.weekNum}</div>
-          <div class="cal-week-grid">
-            ${spanTrackHtml}
+          <div class="cal-week-grid" style="--tracks:${maxTrack + 1}">
             <div class="cal-days-layer">${daysHtml}</div>
+            ${spanTrackHtml}
           </div>
         </div>
       `;
@@ -381,69 +386,50 @@
     const wrapper = $("#cal-weeks-wrapper");
     if (!wrapper) return;
 
-    let isDragging = false;
-    let dragStartIso = null;
-    let dragEndIso = null;
-
     const clearDragHighlight = () => {
       $$(".cal-day-cell.cal-drag-highlight").forEach((el) => el.classList.remove("cal-drag-highlight"));
     };
-
     const applyDragHighlight = (iso1, iso2) => {
       clearDragHighlight();
       if (!iso1 || !iso2) return;
-      const min = iso1 < iso2 ? iso1 : iso2;
-      const max = iso1 < iso2 ? iso2 : iso1;
+      const min = iso1 < iso2 ? iso1 : iso2, max = iso1 < iso2 ? iso2 : iso1;
       $$(".cal-day-cell").forEach((el) => {
         const iso = el.dataset.iso;
-        if (iso && iso >= min && iso <= max) {
-          el.classList.add("cal-drag-highlight");
-        }
+        if (iso && iso >= min && iso <= max) el.classList.add("cal-drag-highlight");
       });
     };
 
-    // Mousedown on day cell
+    // press on a day starts a selection (not on an existing entry)
     wrapper.addEventListener("mousedown", (e) => {
-      // Don't drag if clicking directly on an action button or existing event
-      if (e.target.closest("[data-act]")) return;
+      if (e.button !== 0 || e.target.closest("[data-act]")) return;
       const cell = e.target.closest(".cal-day-cell");
       if (!cell || !cell.dataset.iso) return;
-
-      isDragging = true;
-      dragStartIso = cell.dataset.iso;
-      dragEndIso = dragStartIso;
-      applyDragHighlight(dragStartIso, dragEndIso);
+      drag.on = true;
+      drag.start = drag.end = cell.dataset.iso;
+      applyDragHighlight(drag.start, drag.end);
     });
-
-    // Mouseenter across day cells
     wrapper.addEventListener("mouseover", (e) => {
-      if (!isDragging || !dragStartIso) return;
+      if (!drag.on) return;
       const cell = e.target.closest(".cal-day-cell");
-      if (!cell || !cell.dataset.iso) return;
-      if (cell.dataset.iso !== dragEndIso) {
-        dragEndIso = cell.dataset.iso;
-        applyDragHighlight(dragStartIso, dragEndIso);
-      }
+      if (!cell || !cell.dataset.iso || cell.dataset.iso === drag.end) return;
+      drag.end = cell.dataset.iso;
+      applyDragHighlight(drag.start, drag.end);
     });
-
-    // Mouseup anywhere in document
-    const onMouseUp = (e) => {
-      if (!isDragging) return;
-      isDragging = false;
-      clearDragHighlight();
-
-      if (dragStartIso && dragEndIso) {
-        const min = dragStartIso < dragEndIso ? dragStartIso : dragEndIso;
-        const max = dragStartIso < dragEndIso ? dragEndIso : dragStartIso;
+    // one document-level listener for the whole session (not one-shot)
+    if (!drag.bound) {
+      drag.bound = true;
+      document.addEventListener("mouseup", () => {
+        if (!drag.on) return;
+        drag.on = false;
+        clearDragHighlight();
+        const a = drag.start, b = drag.end;
+        drag.start = drag.end = null;
+        if (!a || !b) return;
+        const min = a < b ? a : b, max = a < b ? b : a;
         state.calSelectedDay = min;
-        // Open modal pre-filled with selected date range!
-        UI.openAddStudyPlanModal({ startDate: min, endDate: max });
-      }
-      dragStartIso = null;
-      dragEndIso = null;
-    };
-
-    document.addEventListener("mouseup", onMouseUp, { once: true });
+        UI.openAddStudyPlanModal({ startDate: min, endDate: max }); // single click = one day, drag = range
+      });
+    }
 
     // Cell click (for mobile or single tap)
     wrapper.addEventListener("click", (e) => {
@@ -454,10 +440,7 @@
       $$(".cal-day-cell.selected").forEach((el) => el.classList.remove("selected"));
       cell.classList.add("selected");
       // Update mobile agenda without full rerender
-      const agendaHead = $(".cal-mobile-agenda h3");
-      if (agendaHead) {
-        UI.render();
-      }
+      if (window.innerWidth <= 768) UI.render(); // agenda card is mobile-only
     });
   };
 
@@ -601,7 +584,7 @@
       </form>
     `;
 
-    UI.modal(t("cal.modalAddTitle") || "Neuer Termin / Lernplan", body);
+    UI.dialog(t("cal.modalAddTitle") || "Neuer Termin / Lernplan", body);
 
     const f = $("#plan-form");
     const allDayCb = $("#plan-allday");
@@ -746,7 +729,7 @@
       </form>
     `;
 
-    UI.modal(t("cal.modalEditTitle") || "Eintrag bearbeiten", body);
+    UI.dialog(t("cal.modalEditTitle") || "Eintrag bearbeiten", body);
 
     const f = $("#plan-edit-form");
     const allDayCb = $("#plan-allday");
@@ -758,11 +741,9 @@
     }
 
     $("#plan-del-btn").addEventListener("click", () => {
-      if (confirm(t("cal.delConfirm") || "Diesen Eintrag wirklich löschen?")) {
-        Store.removeStudyPlan(id);
-        UI.closeModal();
-        UI.toast(t("cal.deleted") || "Eintrag gelöscht");
-      }
+      Store.removeStudyPlan(id);
+      UI.closeModal();
+      UI.toast(t("cal.deleted") || "Eintrag gelöscht");
     });
 
     f.addEventListener("submit", (e) => {

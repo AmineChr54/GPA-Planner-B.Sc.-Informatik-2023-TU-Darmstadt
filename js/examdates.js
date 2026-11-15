@@ -134,6 +134,13 @@ const ExamDates = (() => {
     return data.exams.filter((e) => Tucan.baseCode(e.code) === k);
   }
 
-  return { load, fromFile, forget, forModule, byCode, get: () => data, on: (f) => listeners.push(f), parse };
+  /* backup restore: take an uploaded schedule back (a schedule fetched from the repo always wins) */
+  function restore(d) {
+    if (!d || !Array.isArray(d.exams) || (data && data.source === "repo")) return;
+    data = d;
+    try { localStorage.setItem(LS, JSON.stringify(data)); } catch (e) {}
+    emit();
+  }
+  return { load, fromFile, forget, restore, forModule, byCode, get: () => data, on: (f) => listeners.push(f), parse };
 })();
 window.ExamDates = ExamDates;

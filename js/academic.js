@@ -103,11 +103,9 @@ const AcademicCalendar = (() => {
     return projectSchedule(term);
   }
 
-  /* Check if date falls in Vorlesungsfreie Zeit (semester break) */
+  /* Check if date falls in Vorlesungsfreie Zeit (disabled shading per user preference) */
   function isBreakDay(isoDate) {
-    const s = scheduleOfDate(isoDate);
-    if (!s) return false;
-    return isoDate >= s.breakStart && isoDate <= s.breakEnd;
+    return false;
   }
 
   /* Check if date falls inside a specific holiday (e.g. Weihnachtspause) */
@@ -117,7 +115,7 @@ const AcademicCalendar = (() => {
     return s.holidays.find((h) => isoDate >= h.start && isoDate <= h.end) || null;
   }
 
-  /* Check if date is Vorlesungsbeginn or Vorlesungsende */
+  /* Check if date is Vorlesungsbeginn, Vorlesungsende, or Vorlesungsfreie Zeit Start/Ende */
   function getBoundaryEvent(isoDate) {
     const s = scheduleOfDate(isoDate);
     if (!s) return null;
@@ -126,6 +124,12 @@ const AcademicCalendar = (() => {
     }
     if (isoDate === s.lectureEnd) {
       return { id: `end-${s.term}`, type: "lectureEnd", title: `Vorlesungsende (${s.term})`, date: isoDate, term: s.term };
+    }
+    if (isoDate === s.breakStart) {
+      return { id: `bstart-${s.term}`, type: "breakStart", title: `🏖️ Vorlesungsfreie Zeit Beginn`, date: isoDate, term: s.term };
+    }
+    if (isoDate === s.breakEnd) {
+      return { id: `bend-${s.term}`, type: "breakEnd", title: `🏖️ Vorlesungsfreie Zeit Ende`, date: isoDate, term: s.term };
     }
     return null;
   }
@@ -168,6 +172,32 @@ const AcademicCalendar = (() => {
             color: "#f59e0b", // amber
           });
         }
+        if (s.breakStart && s.breakStart >= startIso && s.breakStart <= endIso && !seen.has(`bstart-${s.term}`)) {
+          seen.add(`bstart-${s.term}`);
+          events.push({
+            id: `acad-bstart-${s.term}`,
+            type: "academic-milestone",
+            subType: "breakStart",
+            title: `🏖️ Vorlesungsfreie Zeit Beginn`,
+            startDate: s.breakStart,
+            endDate: s.breakStart,
+            allDay: true,
+            color: "#64748b",
+          });
+        }
+        if (s.breakEnd && s.breakEnd >= startIso && s.breakEnd <= endIso && !seen.has(`bend-${s.term}`)) {
+          seen.add(`bend-${s.term}`);
+          events.push({
+            id: `acad-bend-${s.term}`,
+            type: "academic-milestone",
+            subType: "breakEnd",
+            title: `🏖️ Vorlesungsfreie Zeit Ende`,
+            startDate: s.breakEnd,
+            endDate: s.breakEnd,
+            allDay: true,
+            color: "#64748b",
+          });
+        }
         // Holidays (e.g. Weihnachtspause)
         (s.holidays || []).forEach((h) => {
           if (!seen.has(h.id) && h.end >= startIso && h.start <= endIso) {
@@ -184,22 +214,6 @@ const AcademicCalendar = (() => {
             });
           }
         });
-        // Semester break banner
-        if (s.breakStart && s.breakEnd && !seen.has(`break-${s.term}`)) {
-          if (s.breakEnd >= startIso && s.breakStart <= endIso) {
-            seen.add(`break-${s.term}`);
-            events.push({
-              id: `acad-break-${s.term}`,
-              type: "academic-break",
-              subType: "semesterBreak",
-              title: `Vorlesungsfreie Zeit (${s.term})`,
-              startDate: s.breakStart,
-              endDate: s.breakEnd,
-              allDay: true,
-              color: "#e2e8f0", // muted grey/slate
-            });
-          }
-        }
       }
       cur.setDate(cur.getDate() + 1);
     }

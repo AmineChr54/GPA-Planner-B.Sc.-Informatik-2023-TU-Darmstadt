@@ -205,7 +205,7 @@
         </div>
       </form>
     `;
-    UI.modal(t("ics.title") || "Kalender exportieren (.ics)", body);
+    UI.dialog(t("ics.title") || "Kalender exportieren (.ics)", body);
 
     $("#ics-export-form").addEventListener("submit", (e) => {
       e.preventDefault();

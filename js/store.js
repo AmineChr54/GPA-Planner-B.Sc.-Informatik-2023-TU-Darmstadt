@@ -58,6 +58,7 @@ const Store = (() => {
         if (!Array.isArray(s.studyPlans)) s.studyPlans = [];
         if (!s.tracker || typeof s.tracker !== "object") s.tracker = {};
       });
+      if (!Array.isArray(d.customTrackerTopics)) d.customTrackerTopics = [];
       if (!d.scenarios.some((s) => s.id === d.active)) d.active = d.scenarios[0].id;
       d.start = d.start || guessStart();
       ensureSems(d);

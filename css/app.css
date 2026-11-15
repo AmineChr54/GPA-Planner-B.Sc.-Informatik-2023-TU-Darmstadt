@@ -697,7 +697,8 @@ html.privacy .scale-track:hover .marker { opacity: 1; }
 .cal-week-row:last-child { border-bottom: none; }
 .cal-week-num { display: flex; align-items: flex-start; justify-content: center; padding-top: 10px; font-size: 11px; font-weight: 600; color: var(--muted); background: var(--surface-2); border-right: 1px solid var(--line); user-select: none; }
 .cal-week-grid { display: flex; flex-direction: column; position: relative; }
-.cal-spanning-container { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; padding: 4px 2px 2px; }
+.cal-spanning-container { position: absolute; left: 0; right: 0; top: 28px; display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; padding: 0 2px; pointer-events: none; }
+.cal-spanning-container > * { pointer-events: auto; }
 .cal-span-bar { display: flex; align-items: center; padding: 1px 8px; font-size: 11px; font-weight: 600; height: 22px; border-radius: 99px; background: var(--bar-bg, #fed7aa); color: #1f2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,.06); z-index: 2; transition: transform .1s; }
 .cal-span-bar:hover { filter: brightness(.95); transform: translateY(-1px); }
 .cal-span-bar.is-acad { opacity: .9; cursor: default; }
@@ -708,17 +709,16 @@ html.privacy .scale-track:hover .marker { opacity: 1; }
 .cal-day-cell:hover { background: var(--hover); }
 .cal-day-cell.not-in-month { opacity: .45; background: var(--surface-2); }
 .cal-day-cell.today { outline: 2px solid var(--accent); outline-offset: -2px; background: var(--accent-soft); }
-.cal-day-cell.break-day { background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, var(--surface-2) 10px, var(--surface-2) 20px); }
 .cal-day-cell.cal-drag-highlight { background: var(--accent-soft) !important; outline: 1px dashed var(--accent); }
-.cal-day-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.cal-day-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: calc(4px + var(--tracks, 0) * 24px); }
 .cal-day-num { font-size: 12px; font-weight: 600; color: var(--ink-2); }
 .cal-day-cell.today .cal-day-num { background: var(--accent); color: #fff; padding: 1px 6px; border-radius: 10px; }
 .cal-break-indicator { font-size: 11px; opacity: .7; }
-.cal-boundary-badge { font-size: 10.5px; font-weight: 700; padding: 1px 5px; border-radius: 4px; margin-bottom: 4px; display: inline-flex; align-items: center; gap: 3px; }
+.cal-boundary-badge { max-width: 100%; line-height: 1.25; font-size: 10.5px; font-weight: 700; padding: 1px 5px; border-radius: 4px; margin-bottom: 4px; display: inline-flex; align-items: center; gap: 3px; }
 .cal-boundary-badge.bound-start { background: var(--good-soft); color: var(--good); }
 .cal-boundary-badge.bound-end { background: var(--warn-soft); color: var(--warn); }
 .cal-day-events { display: flex; flex-direction: column; gap: 3px; flex: 1; }
-.cal-event-item { display: flex; align-items: center; gap: 5px; font-size: 11px; padding: 2px 5px; border-radius: 4px; background: var(--surface-2); color: var(--ink); border-left: 3px solid var(--ev-c, var(--accent)); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; cursor: pointer; }
+.cal-event-item { display: flex; align-items: flex-start; gap: 5px; font-size: 11px; line-height: 1.25; padding: 2px 5px; border-radius: 4px; background: var(--surface-2); color: var(--ink); border-left: 3px solid var(--ev-c, var(--accent)); overflow: hidden; cursor: pointer; min-width: 0; }
 .cal-event-item:hover { filter: brightness(.95); }
 .cal-event-item.is-done { opacity: .5; text-decoration: line-through; }
 .cal-exam-item { background: var(--surface-2); border-left-color: var(--accent); font-weight: 600; }
@@ -729,7 +729,9 @@ html.privacy .scale-track:hover .marker { opacity: 1; }
 .cal-exam-item.a-B12 { border-left-color: var(--a-B12); }
 .cal-exam-item.a-B2 { border-left-color: var(--a-B2); }
 .cal-ev-dot { width: 6px; height: 6px; border-radius: 50%; flex: none; }
-.cal-ev-title { overflow: hidden; text-overflow: ellipsis; }
+.cal-ev-title { min-width: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.cal-ev-time { font-weight: 700; color: var(--muted); margin-right: 4px; }
+.cal-boundary-badge.bound-break { background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--line-2); }
 .cal-att-warn { color: var(--bad); font-weight: 700; }
 .cal-sticky-note { background: var(--note-bg, #fef08a); color: #713f12; padding: 5px 6px; border-radius: 2px 8px 4px 4px; font-size: 11px; font-weight: 600; box-shadow: 1px 2px 4px rgba(0,0,0,.1); margin: 2px 0; display: flex; align-items: flex-start; gap: 4px; cursor: pointer; position: relative; }
 .cal-sticky-note:hover { transform: rotate(-0.5deg) scale(1.02); }
@@ -780,7 +782,20 @@ html.privacy .scale-track:hover .marker { opacity: 1; }
 .trk-ak-del { color: var(--muted); }
 .trk-ak-del:hover { color: var(--bad); }
 
+/* hide native number spinners (we have our own +/-) */
+input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+input[type=number]::-webkit-outer-spin-button, input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
 /* Modal Elements for Study Plans */
+.modal-form { display: flex; flex-direction: column; gap: 14px; }
+.modal-form label { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: var(--muted); }
+.modal-form label.switch { flex-direction: row; color: var(--ink); }
+.modal-form label b { color: var(--ink-2); font-weight: 650; }
+.modal-form input[type=text], .modal-form input[type=date], .modal-form input[type=time], .modal-form select, .modal-form textarea { width: 100%; }
+.modal-form .grid2 { gap: 14px; }
+.modal-foot { display: flex; justify-content: flex-end; gap: 8px; margin: 4px -18px -16px; padding: 12px 18px; border-top: 1px solid var(--line); background: var(--surface-2); }
+.modal-foot .btn.danger { margin-right: auto; }
+.cal-sync-details summary { cursor: pointer; }
 .cal-color-picker { display: flex; gap: 8px; align-items: center; padding-top: 4px; }
 .cal-color-choice { cursor: pointer; }
 .cal-color-choice input { display: none; }
@@ -806,3 +821,5 @@ html.privacy .scale-track:hover .marker { opacity: 1; }
 :root[data-theme="dark"] .cal-span-bar { color: #111827; }
 :root[data-theme="dark"] .cal-sticky-note { color: #1f2937; }
 
+
+[hidden] { display: none !important; }
