@@ -19,8 +19,6 @@ const Store = (() => {
       name: lang === "en" ? "My plan" : "Mein Plan",
       target: 2.5,
       modules: withIds(blankModules()),
-      studyPlans: [],
-      tracker: {},
     };
     return {
       v: 2, gradeV: 1, lang: lang || "de", theme: "light", goalOn: false,
@@ -29,6 +27,7 @@ const Store = (() => {
       oral: null, tucan: null, savedAt: null,
       onboarded: false, dirty: false, lastExport: null, snoozeUntil: null, persistAsked: false,
       academicDates: {},
+      studyPlans: [], tracker: {}, customTrackerTopics: [], // calendar + study tracker: global, not per scenario
     };
   }
   function guessStart() {
@@ -55,10 +54,17 @@ const Store = (() => {
     if (d.v === 2 && Array.isArray(d.scenarios) && d.scenarios.length) {
       d.scenarios.forEach((s) => {
         s.modules = (s.modules || []).map((m) => ({ attempts: 0, diff: 2, ...m, id: m.id || uid() }));
-        if (!Array.isArray(s.studyPlans)) s.studyPlans = [];
-        if (!s.tracker || typeof s.tracker !== "object") s.tracker = {};
       });
+      // study plans + tracker used to live inside each scenario: merge them into the global lists (active scenario wins)
+      if (!Array.isArray(d.studyPlans)) d.studyPlans = [];
+      if (!d.tracker || typeof d.tracker !== "object") d.tracker = {};
       if (!Array.isArray(d.customTrackerTopics)) d.customTrackerTopics = [];
+      const ordered = d.scenarios.slice().sort((a, b) => (b.id === d.active) - (a.id === d.active));
+      ordered.forEach((s) => {
+        if (Array.isArray(s.studyPlans)) s.studyPlans.forEach((p) => { if (p && !d.studyPlans.some((x) => x.id === p.id)) d.studyPlans.push(p); });
+        if (s.tracker && typeof s.tracker === "object") Object.keys(s.tracker).forEach((k) => { if (!d.tracker[k]) d.tracker[k] = s.tracker[k]; });
+        delete s.studyPlans; delete s.tracker;
+      });
       if (!d.scenarios.some((s) => s.id === d.active)) d.active = d.scenarios[0].id;
       d.start = d.start || guessStart();
       ensureSems(d);
@@ -95,9 +101,13 @@ const Store = (() => {
     autoGrades();
     return S;
   }
+  let saveWarned = false;
   function save() {
     S.savedAt = new Date().toISOString();
-    try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+    try { localStorage.setItem(KEY, JSON.stringify(S)); saveWarned = false; }
+    catch (e) { // quota full / storage blocked: tell the user once instead of silently losing changes
+      if (!saveWarned && typeof UI !== "undefined" && UI.toast) { saveWarned = true; UI.toast("⚠ Speichern im Browser fehlgeschlagen – bitte Backup exportieren / saving failed, export a backup", "bad"); }
+    }
   }
   function snapshot() { undo.push(JSON.stringify(S)); if (undo.length > 60) undo.shift(); }
   const nearest = (v) => GRADES.reduce((a, b) => (Math.abs(b - v) < Math.abs(a - v) ? b : a));
@@ -194,9 +204,8 @@ const Store = (() => {
 
   /* ---------------- study plans & calendar events ---------------- */
   function studyPlans() {
-    const s = sc();
-    if (!Array.isArray(s.studyPlans)) s.studyPlans = [];
-    return s.studyPlans;
+    if (!Array.isArray(S.studyPlans)) S.studyPlans = [];
+    return S.studyPlans;
   }
   function addStudyPlan(p) {
     let item;
@@ -234,17 +243,15 @@ const Store = (() => {
   }
   function removeStudyPlan(id) {
     commit(() => {
-      const s = sc();
-      s.studyPlans = (s.studyPlans || []).filter((x) => x.id !== id);
+      S.studyPlans = (S.studyPlans || []).filter((x) => x.id !== id);
     });
   }
 
   /* ---------------- tracker (Folien, Übungen, Altklausuren) ---------------- */
   function getTracker(modId) {
-    const s = sc();
-    if (!s.tracker) s.tracker = {};
-    if (!s.tracker[modId]) {
-      s.tracker[modId] = {
+    if (!S.tracker) S.tracker = {};
+    if (!S.tracker[modId]) {
+      S.tracker[modId] = {
         folienCount: 0,
         folienDone: [],
         uebungenCount: 0,
@@ -252,7 +259,7 @@ const Store = (() => {
         altklausuren: [],
       };
     }
-    return s.tracker[modId];
+    return S.tracker[modId];
   }
   function setTrackerCounts(modId, type, count) {
     commit(() => {
@@ -275,7 +282,7 @@ const Store = (() => {
       const isDone = idx < 0;
       if (idx >= 0) arr.splice(idx, 1);
       else arr.push(num);
-      (sc().studyPlans || []).forEach((sp) => {
+      (S.studyPlans || []).forEach((sp) => {
         if (sp.syncModId === modId && sp.syncType === type && +sp.syncNum === +num) {
           sp.done = isDone;
         }

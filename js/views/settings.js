@@ -101,7 +101,7 @@
       <div class="dlg-b"><p>${t("del.text")}</p><p class="fine">${t("del.note")}</p></div>
       <footer class="dlg-f"><button class="btn" data-act="export">${icon("download")}${t("del.exportFirst")}</button><span class="spacer"></span><button class="btn ghost" data-act="close">${t("cancel")}</button><button class="btn solid-danger" data-act="deleteConfirm">${t("del.confirm")}</button></footer>`);
   };
-  UI.act.deleteConfirm = () => { UI.closeModal(); state.pendingImport = null; Store.deleteAll(); location.hash = "#overview"; UI.toast(t("del.done")); };
+  UI.act.deleteConfirm = () => { UI.closeModal(); state.pendingImport = null; Store.deleteAll(); if (typeof ExamDates !== "undefined") ExamDates.forget(); location.hash = "#overview"; UI.toast(t("del.done")); };
 
   /* backup reminder: changed since the last export and 30+ days old */
   UI.backupBanner = () => {
