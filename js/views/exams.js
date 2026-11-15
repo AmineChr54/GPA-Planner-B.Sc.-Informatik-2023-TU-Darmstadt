@@ -108,15 +108,45 @@
       return `<li><span class="sw" style="background:var(--a-${m.a})"></span>${nameBtn(m)}<span class="muted fine">${fmt(+m.cp, 0)} CP</span>${att(m)}${sch ? `<span class="fine muted">${t("ex.alsoNow", { term: esc(ed.term), d: dateShort(sch.date) })}</span>` : ""}</li>`;
     }).join("")}</ul></div>`).join("");
 
+    const viewMode = state.examsViewMode || "calendar";
+
+    let mainHeroHtml = "";
+    if (viewMode === "calendar" && typeof UI.renderCalendar === "function") {
+      mainHeroHtml = UI.renderCalendar(c);
+    } else if (viewMode === "tracker" && typeof UI.renderTracker === "function") {
+      mainHeroHtml = UI.renderTracker(c);
+    } else {
+      // Timeline Mode
+      mainHeroHtml = `
+        <div class="cal-top-bar" style="margin-bottom:12px">
+          <h2>📋 ${t("ex.thisTerm", { term: esc(term) })}</h2>
+          <div class="cal-top-actions">
+            <div class="seg-ctrl" role="tablist">
+              <button class="seg-btn" data-act="setExamsMode" data-v="calendar" title="Kalender">📅 ${t("cal.tabCal") || "Kalender"}</button>
+              <button class="seg-btn" data-act="setExamsMode" data-v="tracker" title="Lernfortschritt">📊 ${t("cal.tabTracker") || "Lernfortschritt"}</button>
+              <button class="seg-btn active" data-act="setExamsMode" data-v="timeline" title="Timeline">📋 ${t("cal.tabTimeline") || "Timeline"}</button>
+            </div>
+          </div>
+        </div>
+        <section class="card"><header class="sec-h"><h2>${t("ex.thisTerm", { term: esc(term) })}</h2>
+            <span class="sub">${upcoming.length ? t("ex.count", { n: upcoming.length }) : ""}</span></header>
+          ${upcoming.length ? timeline(upcoming, clash) : `<p class="empty">${ed ? t("ed.noneMine", { term: esc(ed.term) }) : t("exams.noneYet")}</p>`}
+          ${noDate.length ? `<div class="nodate"><h3>${t("ex.noDate")}</h3><p class="fine">${t("ex.noDateSub")}</p>${noDate.map(({ m }) => `<div class="nd-row">${nameBtn(m)}${att(m)}<input type="date" data-id="${m.id}" data-f="examDate" data-key="ed-${m.id}" aria-label="${t("col.date")}"></div>`).join("")}</div>` : ""}
+        </section>
+      `;
+    }
+
     return `
       <div class="page-head"><div><h1>${t("exams.title")}</h1><p class="lede">${t("exams.lede")}</p></div>
-        ${upcoming.length ? `<div class="head-actions"><button class="btn" data-act="edIcs">${icon("download")}${t("ed.ics")}</button></div>` : ""}</div>
+        <div class="head-actions">
+          <button class="btn" data-act="openIcsDialog">${icon("download")}${t("ed.ics") || "Kalender (.ics)"}</button>
+        </div>
+      </div>
+
+      ${mainHeroHtml}
+
       ${sourceCard(ed)}
-      <section class="card"><header class="sec-h"><h2>${t("ex.thisTerm", { term: esc(term) })}</h2>
-          <span class="sub">${upcoming.length ? t("ex.count", { n: upcoming.length }) : ""}</span></header>
-        ${upcoming.length ? timeline(upcoming, clash) : `<p class="empty">${ed ? t("ed.noneMine", { term: esc(ed.term) }) : t("exams.noneYet")}</p>`}
-        ${noDate.length ? `<div class="nodate"><h3>${t("ex.noDate")}</h3><p class="fine">${t("ex.noDateSub")}</p>${noDate.map(({ m }) => `<div class="nd-row">${nameBtn(m)}${att(m)}<input type="date" data-id="${m.id}" data-f="examDate" data-key="ed-${m.id}" aria-label="${t("col.date")}"></div>`).join("")}</div>` : ""}
-      </section>
+
       ${pending.length ? `<section class="card"><h2>${t("ex.pending")}</h2><p class="fine" style="margin-top:-6px">${t("ex.pendingSub")}</p>
         <ul class="pend">${pending.map(({ m, ex }) => `<li><span class="fine muted">${dateShort(ex.date)}</span>${nameBtn(m)}${att(m)}<button class="btn sm primary" data-act="open" data-id="${m.id}">${t("ex.enterGrade")}</button></li>`).join("")}</ul></section>` : ""}
       ${later.length ? `<details class="card later" ${state.laterOpen ? "open" : ""}><summary><h2>${t("ex.later")}</h2><span class="sub">${t("ex.laterSub", { n: later.length })}</span></summary>${laterHtml}</details>` : ""}
@@ -131,6 +161,9 @@
   };
 
   UI.after.exams = () => {
+    if ((state.examsViewMode || "calendar") === "calendar" && typeof UI.afterCalendar === "function") {
+      UI.afterCalendar();
+    }
     const q = $("#ed-q");
     const filter = () => { const v = (q.value || "").trim().toLowerCase(); state.edQ = v; $$("#ed-rows tr").forEach((r) => { r.hidden = v && !r.dataset.q.includes(v); }); };
     if (q) { q.addEventListener("input", filter); filter(); }
@@ -147,23 +180,118 @@
   UI.act.edForget = () => ExamDates.forget();
   UI.act.edReset = (el) => Store.updateModule(el.dataset.id, { examDate: "" });
 
-  /* calendar file with my upcoming exams (floating local times — students are in Darmstadt) */
-  UI.act.edIcs = () => {
-    const ms = Store.mods().filter((m) => m.status === "open" && !m.ungraded && !m.choice).map((m) => ({ m, ex: UI.examOf(m) })).filter((x) => x.ex && daysUntil(x.ex.date) >= 0);
+  /* Enhanced .ics export dialog & generator */
+  UI.act.openIcsDialog = () => {
+    const body = `
+      <form id="ics-export-form" class="modal-form">
+        <p class="fine">${t("ics.intro") || "Wähle aus, welche Kalender-Einträge in die .ics-Datei exportiert werden sollen:"}</p>
+        <div class="cal-ics-options">
+          <label class="switch">
+            <input type="checkbox" id="ics-opt-exams" checked>
+            <span>📝 <b>${t("ics.exams") || "Prüfungstermine (Klausuren)"}</b></span>
+          </label>
+          <label class="switch">
+            <input type="checkbox" id="ics-opt-plans" checked>
+            <span>📚 <b>${t("ics.plans") || "Lernphasen & Deadlines"}</b></span>
+          </label>
+          <label class="switch">
+            <input type="checkbox" id="ics-opt-acad" checked>
+            <span>🏛️ <b>${t("ics.acad") || "TU Darmstadt Semestertermine & Ferien"}</b></span>
+          </label>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn" data-act="close">${t("btn.cancel") || "Abbrechen"}</button>
+          <button type="submit" class="btn primary">${icon("download")}${t("ics.download") || "Exportieren (.ics)"}</button>
+        </div>
+      </form>
+    `;
+    UI.modal(t("ics.title") || "Kalender exportieren (.ics)", body);
+
+    $("#ics-export-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const incExams = $("#ics-opt-exams").checked;
+      const incPlans = $("#ics-opt-plans").checked;
+      const incAcad = $("#ics-opt-acad").checked;
+      UI.closeModal();
+      generateAndDownloadIcs({ incExams, incPlans, incAcad });
+    });
+  };
+
+  function generateAndDownloadIcs({ incExams, incPlans, incAcad }) {
     const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
     const dt = (d, hm) => d.replace(/-/g, "") + (hm ? "T" + hm.replace(":", "") + "00" : "");
-    const escI = (s) => s.replace(/[\\;,]/g, (c) => "\\" + c).replace(/\n/g, "\\n");
-    const ev = ms.map(({ m, ex }) => {
-      const timed = !!ex.start;
-      const end = timed ? dt(ex.date, ex.end || ex.start) : dt(new Date(Date.parse(ex.date) + 864e5).toISOString().slice(0, 10));
-      return ["BEGIN:VEVENT", `UID:${(m.code || m.id).replace(/[^\w-]/g, "")}-${ex.date}@notenplaner`, `DTSTAMP:${stamp}`,
-        timed ? `DTSTART:${dt(ex.date, ex.start)}` : `DTSTART;VALUE=DATE:${dt(ex.date)}`, timed ? `DTEND:${end}` : `DTEND;VALUE=DATE:${end}`,
-        `SUMMARY:${escI(t("ed.icsSummary", { name: m.name }))}`, "END:VEVENT"].join("\r\n");
-    });
-    const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Notenplaner//TU Darmstadt//DE", "CALSCALE:GREGORIAN", ...ev, "END:VCALENDAR"].join("\r\n") + "\r\n";
+    const nextDay = (d) => new Date(Date.parse(d) + 864e5).toISOString().slice(0, 10);
+    const escI = (s) => (s || "").replace(/[\\;,]/g, (c) => "\\" + c).replace(/\n/g, "\\n");
+
+    const events = [];
+
+    // 1. Exams
+    if (incExams) {
+      const ms = Store.mods().filter((m) => m.status === "open" && !m.ungraded && !m.choice).map((m) => ({ m, ex: UI.examOf(m) })).filter((x) => x.ex && daysUntil(x.ex.date) >= 0);
+      ms.forEach(({ m, ex }) => {
+        const timed = !!ex.start;
+        const start = timed ? `DTSTART:${dt(ex.date, ex.start)}` : `DTSTART;VALUE=DATE:${dt(ex.date)}`;
+        const end = timed ? `DTEND:${dt(ex.date, ex.end || ex.start)}` : `DTEND;VALUE=DATE:${dt(nextDay(ex.date))}`;
+        events.push([
+          "BEGIN:VEVENT",
+          `UID:${(m.code || m.id).replace(/[^\w-]/g, "")}-${ex.date}@notenplaner`,
+          `DTSTAMP:${stamp}`,
+          start,
+          end,
+          `SUMMARY:${escI(`Klausur: ${m.name}`)}`,
+          `DESCRIPTION:${escI(`${m.code || ""} (${fmt(+m.cp, 0)} CP)`)}`,
+          "END:VEVENT"
+        ].join("\r\n"));
+      });
+    }
+
+    // 2. Study Plans & Deadlines
+    if (incPlans) {
+      const plans = Store.studyPlans();
+      plans.forEach((p) => {
+        const timed = !p.allDay && !!p.startTime;
+        const start = timed ? `DTSTART:${dt(p.startDate, p.startTime)}` : `DTSTART;VALUE=DATE:${dt(p.startDate)}`;
+        const end = timed ? `DTEND:${dt(p.endDate, p.endTime || p.startTime)}` : `DTEND;VALUE=DATE:${dt(nextDay(p.endDate))}`;
+        const prefix = p.type === "deadline" ? "⏰ Deadline: " : p.type === "note" ? "📌 Notiz: " : "📚 Lernphase: ";
+        events.push([
+          "BEGIN:VEVENT",
+          `UID:${p.id}@notenplaner`,
+          `DTSTAMP:${stamp}`,
+          start,
+          end,
+          `SUMMARY:${escI(prefix + p.title)}`,
+          p.note ? `DESCRIPTION:${escI(p.note)}` : "",
+          "END:VEVENT"
+        ].filter(Boolean).join("\r\n"));
+      });
+    }
+
+    // 3. Academic Dates & Breaks
+    if (incAcad && typeof AcademicCalendar !== "undefined") {
+      const curYear = state.calYear || new Date().getFullYear();
+      const acadEvents = AcademicCalendar.getAcademicEventsForRange(`${curYear}-01-01`, `${curYear + 1}-12-31`);
+      acadEvents.forEach((ev) => {
+        const start = `DTSTART;VALUE=DATE:${dt(ev.startDate)}`;
+        const end = `DTEND;VALUE=DATE:${dt(nextDay(ev.endDate))}`;
+        events.push([
+          "BEGIN:VEVENT",
+          `UID:${ev.id}@notenplaner`,
+          `DTSTAMP:${stamp}`,
+          start,
+          end,
+          `SUMMARY:${escI(ev.title)}`,
+          "DESCRIPTION:Offizieller Termin der TU Darmstadt",
+          "END:VEVENT"
+        ].join("\r\n"));
+      });
+    }
+
+    const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Notenplaner//TU Darmstadt//DE", "CALSCALE:GREGORIAN", ...events, "END:VCALENDAR"].join("\r\n") + "\r\n";
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([ics], { type: "text/calendar" }));
-    a.download = "pruefungen.ics"; a.click();
+    a.download = "studienplaner.ics";
+    a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-  };
+    UI.toast(t("ics.downloaded") || ".ics Kalender heruntergeladen", "good");
+  }
 })();

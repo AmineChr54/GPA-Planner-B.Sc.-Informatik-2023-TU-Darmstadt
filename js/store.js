@@ -14,13 +14,21 @@ const Store = (() => {
   function withIds(mods) { return mods.map((m) => ({ id: uid(), attempts: 0, diff: 2, ...m })); }
 
   function fresh(lang) {
-    const s = { id: "s" + Date.now().toString(36), name: lang === "en" ? "My plan" : "Mein Plan", target: 2.5, modules: withIds(blankModules()) };
+    const s = {
+      id: "s" + Date.now().toString(36),
+      name: lang === "en" ? "My plan" : "Mein Plan",
+      target: 2.5,
+      modules: withIds(blankModules()),
+      studyPlans: [],
+      tracker: {},
+    };
     return {
       v: 2, gradeV: 1, lang: lang || "de", theme: "light", goalOn: false,
       start: guessStart(), active: s.id, scenarios: [s],
       sems: Array.from({ length: 6 }, () => ({ t: "n" })), // n = normal · u = Urlaubssemester · a = Auslandssemester
       oral: null, tucan: null, savedAt: null,
       onboarded: false, dirty: false, lastExport: null, snoozeUntil: null, persistAsked: false,
+      academicDates: {},
     };
   }
   function guessStart() {
@@ -45,7 +53,11 @@ const Store = (() => {
   function validate(d) {
     if (!d || typeof d !== "object") return null;
     if (d.v === 2 && Array.isArray(d.scenarios) && d.scenarios.length) {
-      d.scenarios.forEach((s) => { s.modules = (s.modules || []).map((m) => ({ attempts: 0, diff: 2, ...m, id: m.id || uid() })); });
+      d.scenarios.forEach((s) => {
+        s.modules = (s.modules || []).map((m) => ({ attempts: 0, diff: 2, ...m, id: m.id || uid() }));
+        if (!Array.isArray(s.studyPlans)) s.studyPlans = [];
+        if (!s.tracker || typeof s.tracker !== "object") s.tracker = {};
+      });
       if (!d.scenarios.some((s) => s.id === d.active)) d.active = d.scenarios[0].id;
       d.start = d.start || guessStart();
       ensureSems(d);
@@ -179,6 +191,129 @@ const Store = (() => {
   }
   function activate(id) { S.active = id; emit(); }
 
+  /* ---------------- study plans & calendar events ---------------- */
+  function studyPlans() {
+    const s = sc();
+    if (!Array.isArray(s.studyPlans)) s.studyPlans = [];
+    return s.studyPlans;
+  }
+  function addStudyPlan(p) {
+    let item;
+    commit(() => {
+      item = {
+        id: "sp" + uid(),
+        title: p.title || "Lernphase",
+        type: p.type || "phase", // "phase" | "deadline" | "note"
+        startDate: p.startDate || new Date().toISOString().slice(0, 10),
+        endDate: p.endDate || p.startDate || new Date().toISOString().slice(0, 10),
+        allDay: p.allDay !== false,
+        startTime: p.startTime || "",
+        endTime: p.endTime || "",
+        color: p.color || "#fed7aa",
+        note: p.note || "",
+        done: !!p.done,
+        syncModId: p.syncModId || null,
+        syncType: p.syncType || null, // "uebung" | "folien"
+        syncNum: p.syncNum != null ? +p.syncNum : null,
+      };
+      studyPlans().push(item);
+    });
+    return item;
+  }
+  function updateStudyPlan(id, patch) {
+    commit(() => {
+      const sp = studyPlans().find((x) => x.id === id);
+      if (sp) {
+        Object.assign(sp, patch);
+        if (sp.syncModId && sp.syncType && sp.syncNum != null) {
+          syncTrackerFromPlan(sp);
+        }
+      }
+    });
+  }
+  function removeStudyPlan(id) {
+    commit(() => {
+      const s = sc();
+      s.studyPlans = (s.studyPlans || []).filter((x) => x.id !== id);
+    });
+  }
+
+  /* ---------------- tracker (Folien, Übungen, Altklausuren) ---------------- */
+  function getTracker(modId) {
+    const s = sc();
+    if (!s.tracker) s.tracker = {};
+    if (!s.tracker[modId]) {
+      s.tracker[modId] = {
+        folienCount: 0,
+        folienDone: [],
+        uebungenCount: 0,
+        uebungenDone: [],
+        altklausuren: [],
+      };
+    }
+    return s.tracker[modId];
+  }
+  function setTrackerCounts(modId, type, count) {
+    commit(() => {
+      const t = getTracker(modId);
+      const n = Math.max(0, Math.min(99, parseInt(count, 10) || 0));
+      if (type === "folien") {
+        t.folienCount = n;
+        t.folienDone = (t.folienDone || []).filter((x) => x <= n);
+      } else if (type === "uebungen") {
+        t.uebungenCount = n;
+        t.uebungenDone = (t.uebungenDone || []).filter((x) => x <= n);
+      }
+    });
+  }
+  function toggleTrackerItem(modId, type, num) {
+    commit(() => {
+      const t = getTracker(modId);
+      const arr = type === "folien" ? (t.folienDone = t.folienDone || []) : (t.uebungenDone = t.uebungenDone || []);
+      const idx = arr.indexOf(num);
+      const isDone = idx < 0;
+      if (idx >= 0) arr.splice(idx, 1);
+      else arr.push(num);
+      (sc().studyPlans || []).forEach((sp) => {
+        if (sp.syncModId === modId && sp.syncType === type && +sp.syncNum === +num) {
+          sp.done = isDone;
+        }
+      });
+    });
+  }
+  function addAltklausur(modId, name) {
+    commit(() => {
+      const t = getTracker(modId);
+      if (!t.altklausuren) t.altklausuren = [];
+      t.altklausuren.push({
+        id: "ak" + uid(),
+        name: (name || "").trim() || "Altklausur",
+        done: false,
+      });
+    });
+  }
+  function toggleAltklausur(modId, akId) {
+    commit(() => {
+      const t = getTracker(modId);
+      const ak = (t.altklausuren || []).find((x) => x.id === akId);
+      if (ak) ak.done = !ak.done;
+    });
+  }
+  function removeAltklausur(modId, akId) {
+    commit(() => {
+      const t = getTracker(modId);
+      t.altklausuren = (t.altklausuren || []).filter((x) => x.id !== akId);
+    });
+  }
+  function syncTrackerFromPlan(sp) {
+    if (!sp.syncModId || !sp.syncType || sp.syncNum == null) return;
+    const t = getTracker(sp.syncModId);
+    const arr = sp.syncType === "folien" ? (t.folienDone = t.folienDone || []) : (t.uebungenDone = t.uebungenDone || []);
+    const idx = arr.indexOf(+sp.syncNum);
+    if (sp.done && idx < 0) arr.push(+sp.syncNum);
+    else if (!sp.done && idx >= 0) arr.splice(idx, 1);
+  }
+
   /* ---------------- TUCaN import merge ----------------
      imported: [{a,g,code,name,cp,status,grade,ungraded,attempts,date}]
      opts: {all: apply to every scenario, dropPh: remove placeholder electives}   */
@@ -310,6 +445,8 @@ const Store = (() => {
   return {
     load, get: () => S, sc, mods, byId, on: (f) => listeners.push(f), commit, set, undoLast, canUndo: () => undo.length > 0,
     updateModule, addModule, removeModule, setGoal, estimate, newScenario, renameScenario, deleteScenario, activate,
+    studyPlans, addStudyPlan, updateStudyPlan, removeStudyPlan,
+    getTracker, setTrackerCounts, toggleTrackerItem, addAltklausur, toggleAltklausur, removeAltklausur,
     applyImport, fillGaps, replaceAll, reset, uid, emit, save,
     addSem, setSemType, insertSem, removeSem, markExported, snooze, deleteAll, hasData, ensureSems: () => ensureSems(S),
   };

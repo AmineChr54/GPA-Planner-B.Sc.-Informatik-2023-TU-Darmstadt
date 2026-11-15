@@ -136,3 +136,4 @@ const ExamDates = (() => {
 
   return { load, fromFile, forget, forModule, byCode, get: () => data, on: (f) => listeners.push(f), parse };
 })();
+window.ExamDates = ExamDates;
